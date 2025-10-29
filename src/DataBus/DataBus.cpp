@@ -20,7 +20,7 @@
 
 class DataBus {
 public:
-static constexpr size_t MAX_QUEUE_SIZE = 10000; // TODO: Move to config
+static constexpr size_t MAX_QUEUE_SIZE = 100000; // TODO: Move to config
     static DataBus& instance() {
         static DataBus instance;
         return instance;
