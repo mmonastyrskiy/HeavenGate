@@ -2,7 +2,11 @@
 #include <chrono>
 #include "../../thirdparty/json.hpp"
 
-enum BusEventType {};
+enum BusEventType {SERVICE_HEALTH_UPDATE,
+                    REQUEST_CLASSIFIED,
+                    REQUEST_PROCESSED,
+                    SERVICE_REGISTERED
+                };
 struct Event {
     BusEventType type;
     std::string source;

@@ -8,7 +8,7 @@ class DataBus {
     
     public:
     static DataBus& instance();
-    void send(BusEventType type,std::string& source, const nlohmann::json& data);
+    void publish(BusEventType type,std::string& source, const nlohmann::json& data);
     SubscriptionId subscribe(BusEventType type, EventCallback callback);
     void unsubscribe(SubscriptionId id);
 
