@@ -3,7 +3,7 @@
 #include "../thirdparty/json.hpp"
 using namespace std::chrono_literals;
 class DataBus {
-    using EventCallback = std::function<void(const BusEventType&)>;
+    using EventCallback = std::function<void(const Event&)>;
     using SubscriptionId = uint64_t;
     
     public:
