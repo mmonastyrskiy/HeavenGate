@@ -6,7 +6,8 @@ enum BusEventType {SERVICE_HEALTH_UPDATE,
                     REQUEST_CLASSIFIED,
                     REQUEST_PROCESSED,
                     SERVICE_REGISTERED,
-                    REQUEST_ROUTED
+                    REQUEST_ROUTED,
+
                 };
 struct Event {
     BusEventType type;
