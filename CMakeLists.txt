@@ -8,6 +8,7 @@ set(CMAKE_GENERATOR "Ninja" CACHE INTERNAL "")
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
+add_compile_options(-Wno-c++17-extensions)
 
 # Оптимизации для Ninja
 if(CMAKE_GENERATOR STREQUAL "Ninja")

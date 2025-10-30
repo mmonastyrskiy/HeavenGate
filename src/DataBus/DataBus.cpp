@@ -1,4 +1,5 @@
-#pragma once
+#pragma GCC diagnostic ignored "-Wc++17-extensions"
+
 #include <memory>
 #include <unordered_map>
 #include <vector>

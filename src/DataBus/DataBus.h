@@ -1,6 +1,5 @@
 #include <chrono>
 #include <string>
-#include "../thirdparty/json.hpp"
 using namespace std::chrono_literals;
 class DataBus {
     using EventCallback = std::function<void(const Event&)>;
