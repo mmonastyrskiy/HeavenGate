@@ -1,3 +1,4 @@
+add_compile_options(-Wno-c++17-extensions)
 # Автоматический поиск исходных файлов
 file(GLOB_RECURSE SRC_FILES 
     "*.cpp"
