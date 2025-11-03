@@ -33,7 +33,6 @@ namespace Argparcer{
     class Argparcer{
     public:
         std::vector<Key> registered_keys;
-        std::vector<Key> required_keys;
         std::vector<std::string> positional_args;
 
 
@@ -101,6 +100,13 @@ namespace Argparcer{
         positional_args.push_back(argv[i]);
     }
 }
+for(const auto& key : registered_keys) {
+    if(key.is_required && key.val.empty()) {
+        std::cout << "Required parameter: " << key.name << " is missing" << std::endl;
+        return REQUIRED_MISSING;
+    }
+}
+
     }
 
 private:

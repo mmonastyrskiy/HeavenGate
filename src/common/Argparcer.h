@@ -10,6 +10,8 @@ namespace Argparcer{
 
 #define KEY_NOT_UNIQUE -1
 #define REQUIRE_VALUE -2
+#define REQUIRED_MISSING -3
+
 
     enum class supportedTypes {
         int_type,
