@@ -1,0 +1,13 @@
+/mnt/d/HeavenGate/build/CMakeFiles/edit_cache.dir
+/mnt/d/HeavenGate/build/CMakeFiles/rebuild_cache.dir
+/mnt/d/HeavenGate/build/CMakeFiles/list_install_components.dir
+/mnt/d/HeavenGate/build/CMakeFiles/install.dir
+/mnt/d/HeavenGate/build/CMakeFiles/install/local.dir
+/mnt/d/HeavenGate/build/CMakeFiles/install/strip.dir
+/mnt/d/HeavenGate/build/src/CMakeFiles/heavengate.dir
+/mnt/d/HeavenGate/build/src/CMakeFiles/edit_cache.dir
+/mnt/d/HeavenGate/build/src/CMakeFiles/rebuild_cache.dir
+/mnt/d/HeavenGate/build/src/CMakeFiles/list_install_components.dir
+/mnt/d/HeavenGate/build/src/CMakeFiles/install.dir
+/mnt/d/HeavenGate/build/src/CMakeFiles/install/local.dir
+/mnt/d/HeavenGate/build/src/CMakeFiles/install/strip.dir

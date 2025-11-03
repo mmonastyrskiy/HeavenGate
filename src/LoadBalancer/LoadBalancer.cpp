@@ -1,4 +1,5 @@
-#include <string>
+
+#pragma once
 #include <atomic>
 #include <chrono>
 #include <mutex>
@@ -8,12 +9,56 @@
 #include <random>
 #include <memory>
 #include "LoadBalancer.h"
-#include "LoadBalancerMetrics.h"
-#include "../DataBus/DataBus.h"
-#include "../DataBus/BusEvent.h"
-#include "../DataBus/subscriptionID.h"
-#include "../../thirdparty/json.hpp"
+#include "../DataBus/DataBus.cpp"
 
+
+ struct BackendNode{
+    std::string id;
+    std::string host;
+    int port;
+    bool is_honeypot;
+    float weight;
+    std::atomic<int> current_clients {0};
+    std::atomic<bool> is_healthy{true};
+    std::chrono::steady_clock::time_point last_health_check;
+
+    std::atomic<uint64_t> total_requests{0};
+    std::atomic<uint64_t> successful_responses{0};
+    std::atomic<uint64_t> failed_responses{0};
+    std::atomic<uint64_t> total_response_time_ms{0};
+    std::chrono::steady_clock::time_point last_request_time;
+
+
+
+};
+
+
+ enum class RoutingStrategy {
+        ROUND_ROBIN,
+        LEAST_CONNECTIONS,
+        IP_HASH,
+        WEIGHTED
+    };
+
+
+    struct BackendStats {
+        std::string server_id;
+        std::string host;
+        int port;
+        bool is_honeypot;
+        bool healthy;
+        int current_connections;
+        int weight;
+        
+        uint64_t total_requests;
+        uint64_t successful_responses;
+        uint64_t failed_responses;
+        double success_rate;
+        double average_response_time_ms;
+        uint64_t uptime_seconds;
+        std::chrono::steady_clock::time_point last_request_time;
+    
+};
 // Forward declarations or include proper headers
 
 using EventCallback = std::function<void(const Event&)>;
@@ -54,9 +99,28 @@ struct PerformanceStats {
 class LoadBalancer
 {
 private:
-    LoadBalancer() = delete; // Remove private default constructor
 
 public:
+// Конструктор
+LoadBalancer(RoutingStrategy strategy)
+    : strategy_(strategy) {
+    
+    // Регистрация в шине данных
+    health_check_sub_ = DataBus::instance().subscribe(
+        BusEventType::SERVICE_HEALTH_UPDATE,
+        [this](const Event& event) {
+            this->handle_health_update(event);
+        }
+    );
+    
+    classification_sub_ = DataBus::instance().subscribe(
+        BusEventType::REQUEST_CLASSIFIED,
+        [this](const Event& event) {
+            this->handle_classification(event);
+        }
+    );
+}
+
     struct BackendNode {
         std::string id;
         std::string host;
@@ -77,7 +141,7 @@ public:
                    bool is_honeypot = false, float weight = 1.0f)
             : id(id), host(host), port(port), is_honeypot(is_honeypot), weight(weight) {}
     };
-
+/*
     LoadBalancer(RoutingStrategy strategy = RoutingStrategy::ROUND_ROBIN)
         : strategy_(strategy), running_(false) {
         stats_.start_time = std::chrono::steady_clock::now();
@@ -103,6 +167,7 @@ health_check_sub_ = DataBus::instance().subscribe(
             }
         );
     }
+        */
 
     ~LoadBalancer() {
         stop();
@@ -111,28 +176,27 @@ health_check_sub_ = DataBus::instance().subscribe(
         DataBus::instance().unsubscribe(response_sub_);
     }
 
-    void add_backend(const BackendNode& server) {
-        std::lock_guard<std::mutex> lock(backends_mutex_);
-        auto server_ptr = std::make_shared<BackendNode>(server);
-        
-        if (server.is_honeypot) {
-            honeypot_backends_.push_back(server_ptr);
-        } else {
-            real_backends_.push_back(server_ptr);
-        }
-
-        DataBus::instance().publish(
-            BusEventType::SERVICE_REGISTERED,
-            (std::string) "load_balancer",
-            {
-                {"server_id", server.id},
-                {"host", server.host},
-                {"port", server.port},
-                {"is_honeypot", server.is_honeypot},
-                {"weight", server.weight}
-            }
-        );
+    void add_backend(std::shared_ptr<BackendNode> server_ptr) {
+    std::lock_guard<std::mutex> lock(backends_mutex_);
+    
+    if (server_ptr->is_honeypot) {
+        honeypot_backends_.push_back(server_ptr);
+    } else {
+        real_backends_.push_back(server_ptr);
     }
+
+    DataBus::instance().publish(
+        BusEventType::SERVICE_REGISTERED,
+        (std::string) "load_balancer",
+        {
+            {"server_id", server_ptr->id},
+            {"host", server_ptr->host},
+            {"port", std::to_string(server_ptr->port)},
+            {"is_honeypot", server_ptr->is_honeypot ? "true" : "false"},
+            {"weight", std::to_string(server_ptr->weight)}
+        }
+    );
+}
 
      std::shared_ptr<BackendNode> select_backend(bool is_malicious, const std::string& client_ip = "") {
         auto start_time = std::chrono::steady_clock::now();
@@ -204,7 +268,7 @@ health_check_sub_ = DataBus::instance().subscribe(
             DataBus::instance().publish(
                 BusEventType::REQUEST_ROUTED,
                 (std::string) "load_balancer",
-                {
+                nlohmann::json{
                     {"client_ip", client_ip},
                     {"server_id", selected->id},
                     {"is_malicious", is_malicious},
@@ -328,24 +392,17 @@ private:
         }
     }
 
-    void handle_health_update(const Event& event) {
-        // Implement health update logic
-    }
 
-    void handle_classification(const Event& event) {
-        // Implement classification logic
-    }
 
-    void mark_request_success(const std::string& server_id, std::chrono::milliseconds response_time) {
+    void mark_request_success([[maybe_unused]] const std::string& server_id, [[maybe_unused]] std::chrono::milliseconds response_time) {
         // Implement success tracking
     }
 
-    void mark_request_failure(const std::string& server_id) {
+    void mark_request_failure([[maybe_unused]] const std::string& server_id) {
         // Implement failure tracking
     }
  std::shared_ptr<BackendNode> round_robin_selection(
         const std::vector<std::shared_ptr<BackendNode>>& backends) {
-        
         size_t index = round_robin_index_++ % backends.size();
         return backends[index];
     }
@@ -417,7 +474,7 @@ std::shared_ptr<BackendNode> least_connections_selection(
                 if (was_healthy != is_healthy) {
                     DataBus::instance().publish(
                         BusEventType::SERVICE_HEALTH_UPDATE,
-                        (std::string)"load_balancer",
+                        (std::string) "load_balancer",
                         {
                             {"server_id", backend->id},
                             {"host", backend->host},
@@ -435,7 +492,7 @@ std::shared_ptr<BackendNode> least_connections_selection(
         check_backends(honeypot_backends_);
     }
 
-     bool check_server_health(const std::shared_ptr<BackendNode>& server) {
+     bool check_server_health([[maybe_unused]] const std::shared_ptr<BackendNode>& server) {
         // Простая реализация health check - можно расширить
         try {
             // Здесь может быть HTTP запрос, TCP соединение и т.д.
