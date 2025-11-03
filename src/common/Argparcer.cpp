@@ -121,5 +121,10 @@ private:
         }
         return "";
     }
+    std::string get(std::string s ){
+        for(auto &it : registered_keys){
+            if(it.name == s){return it.val;}
+        }
+    }
 };
 }
