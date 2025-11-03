@@ -9,6 +9,7 @@
 namespace Argparcer{
 
 #define KEY_NOT_UNIQUE -1
+#define REQUIRE_VALUE -2
 
     enum class supportedTypes {
         int_type,
@@ -19,7 +20,7 @@ namespace Argparcer{
     class Key{
         public:
         // Исправлено: supportedTypes с маленькой буквы и инициализация полей
-        Key(std::string flag, std::string helpstring, bool required = false, Argparcer::supportedTypes astype);
+        Key(std::string flag, std::string helpstring, bool required = false, supportedTypes astype);
         ~Key() = default;
     };
 
@@ -28,12 +29,13 @@ namespace Argparcer{
     static Argparcer& the();
 
         // Исправлено: supportedTypes с маленькой буквы
-        int register_key(std::string flag, std::string helpstring, bool required = false, Argparcer::supportedTypes astype);
-        void parse(int argc, char** argv);
+        int register_key(std::string flag, std::string helpstring, bool required = false, supportedTypes astype);
+        int parse(int argc, char** argv);
 
     private:    
         Argparcer() = default;
         ~Argparcer() = default;
         void create_auto_help_page();
+        std::string isvalid(std::string s );
     };
 }
