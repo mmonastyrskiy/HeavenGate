@@ -1,17 +1,6 @@
 # ninja log v5
-40	2530	1761891538486505000	src/CMakeFiles/heavengate.dir/main.cpp.o	ff561fbb7c0744ad
-33	1638	1761891691611997000	src/CMakeFiles/heavengate.dir/LoadBalancer/LoadBalancer.cpp.o	d8483e608b380f9f
-31	1928	1761891691901356600	src/CMakeFiles/heavengate.dir/DataBus/DataBus.cpp.o	85ca217073a5fa15
-13	152	1761891868196063400	build.ninja	751ce9407b6baa41
-26	1877	1761891870087396800	src/CMakeFiles/heavengate.dir/DataBus/DataBus.cpp.o	85ca217073a5fa15
-28	2408	1761891870618742600	src/CMakeFiles/heavengate.dir/LoadBalancer/LoadBalancer.cpp.o	d8483e608b380f9f
-25	3539	1761891871748233700	src/CMakeFiles/heavengate.dir/main.cpp.o	ff561fbb7c0744ad
-3543	4221	1761891872433707700	bin/heavengate	56ec0379d28c6ee4
-26	2952	1761891946689329000	src/CMakeFiles/heavengate.dir/main.cpp.o	ff561fbb7c0744ad
-2957	3642	1761891947382713600	bin/heavengate	56ec0379d28c6ee4
-24	1806	1761892184979516700	src/CMakeFiles/heavengate.dir/LoadBalancer/LoadBalancer.cpp.o	d8483e608b380f9f
-23	2951	1761892186125326900	src/CMakeFiles/heavengate.dir/main.cpp.o	ff561fbb7c0744ad
-2954	3606	1761892186781746700	bin/heavengate	56ec0379d28c6ee4
-28	1807	1761892269216969600	src/CMakeFiles/heavengate.dir/LoadBalancer/LoadBalancer.cpp.o	d8483e608b380f9f
 26	2937	1761892270345575600	src/CMakeFiles/heavengate.dir/main.cpp.o	ff561fbb7c0744ad
+28	1807	1761892269216969600	src/CMakeFiles/heavengate.dir/LoadBalancer/LoadBalancer.cpp.o	d8483e608b380f9f
+26	1877	1761891870087396800	src/CMakeFiles/heavengate.dir/DataBus/DataBus.cpp.o	85ca217073a5fa15
+13	152	0	build.ninja	751ce9407b6baa41
 2941	3660	1761892271070668300	bin/heavengate	56ec0379d28c6ee4
