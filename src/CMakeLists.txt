@@ -11,7 +11,7 @@ set(SRC_FILES
     DataBus/DataBus.cpp
     LoadBalancer/LoadBalancer.cpp
     common/Argparcer.cpp
-    API/DashboardAPI.cpp
+    API/dashboardAPI.cpp
 )
 
 set(HEADER_FILES
@@ -21,7 +21,7 @@ set(HEADER_FILES
     LoadBalancer/LoadBalancer.h
     ../thirdparty/json.hpp
     common/Argparcer.h
-    API/DashboardAPI.hpp
+    API/dashboardAPI.h
 )
 
 # Основной исполняемый файл

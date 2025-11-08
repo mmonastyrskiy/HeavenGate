@@ -1,4 +1,4 @@
-#include "DashboardAPI.hpp"
+#include "dashboardAPI.h"
 #include <curl/curl.h>
 #include <iostream>
 #include <chrono>

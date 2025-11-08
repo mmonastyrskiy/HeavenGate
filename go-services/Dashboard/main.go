@@ -25,7 +25,7 @@ func main() {
 	fmt.Println("--------------------------------------------------------")
 
 	// API для приема запросов от балансировщика
-	http.HandleFunc("/api/requests", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/api/user_registered", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "POST" {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 			return
