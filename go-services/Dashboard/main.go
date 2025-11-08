@@ -68,6 +68,7 @@ func main() {
 		<!DOCTYPE html>
 		<html>
 		<head>
+		<meta charset="UTF-8">
 			<title>HeavenGate Balancer Monitor</title>
 			<style>
 				body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
