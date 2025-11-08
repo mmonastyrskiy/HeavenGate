@@ -9,7 +9,7 @@ import (
 )
 
 type BalancerRequest struct {
-	ClientIP    string `json:"client_ip"`
+	ClientIP    string `json:"clientIP"`
 	Path        string `json:"path"`
 	IsMalicious bool   `json:"is_malicious"`
 	Timestamp   string `json:"timestamp"`
