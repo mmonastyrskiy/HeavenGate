@@ -11,7 +11,7 @@ import (
 type BalancerRequest struct {
 	ClientIP    string `json:"clientIP"`
 	Path        string `json:"path"`
-	IsMalicious bool   `json:"is_malicious"`
+	IsMalicious bool   `json:"IsMalicious"`
 	Timestamp   string `json:"timestamp"`
 	ReceivedAt  time.Time
 }
