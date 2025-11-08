@@ -1,12 +1,14 @@
 #include <iostream>
 #include "LoadBalancer/LoadBalancer.h"
 #include "DataBus/DataBus.h"
+#include "../include/colorText.h"
 
 std::atomic<bool> running{true};
 
 int main() {
-    std::cout << "Starting HeavenGate Load Balancer" << std::endl;
+     color::print::red() << "Text";
 
+    std::cout << "Starting HeavenGate Load Balancer" << std::endl;
     try {
         // Создаем балансировщик
         LoadBalancer balancer(RoutingStrategy::ROUND_ROBIN);
