@@ -9,9 +9,9 @@ import (
 )
 
 type BalancerRequest struct {
-	ClientIP    string `json:"client_ip"`
+	ClientIP    string `json:"clientIP"`
 	Path        string `json:"path"`
-	IsMalicious bool   `json:"is_malicious"`
+	IsMalicious bool   `json:"IsMalicious"`
 	Timestamp   string `json:"timestamp"`
 	ReceivedAt  time.Time
 }
@@ -68,6 +68,7 @@ func main() {
 		<!DOCTYPE html>
 		<html>
 		<head>
+		<meta charset="UTF-8">
 			<title>HeavenGate Balancer Monitor</title>
 			<style>
 				body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
