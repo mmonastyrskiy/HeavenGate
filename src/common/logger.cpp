@@ -26,8 +26,8 @@ std::string Logger::getCurrentTimeISO() {
 void Logger::info(const std::string& msg) {
     std::string timestamp = getCurrentTimeISO();
     std::cout << timestamp << " [INFO] ";
-    color::print::info() << msg;
-    std::cout << std::endl;
+    auto p = color::print::info() << msg;
+    p.println();
     
     if(WRITE_TO_FILE) {
         writelog(timestamp + " [INFO] " + msg);
@@ -37,8 +37,8 @@ void Logger::info(const std::string& msg) {
 void Logger::warn(const std::string& msg) {
     std::string timestamp = getCurrentTimeISO();
     std::cout << timestamp << " [WARN] ";
-    color::print::warning() << msg;
-    std::cout << std::endl;
+    auto p = color::print::warning() << msg;
+    p.println();
     
     if(WRITE_TO_FILE) {
         writelog(timestamp + " [WARN] " + msg);
@@ -48,8 +48,8 @@ void Logger::warn(const std::string& msg) {
 void Logger::err(const std::string& msg) {
     std::string timestamp = getCurrentTimeISO();
     std::cout << timestamp << " [ERROR] " + static_cast<std::string>( __FILE__) + static_cast<char>(__LINE__);;
-    color::print::error() << msg;
-    std::cout << std::endl;
+    auto p = color::print::error() << msg;
+    p.println();
     
     if(WRITE_TO_FILE) {
         writelog(timestamp + " [ERROR]  " + __FILE__ + static_cast<char>(__LINE__) + msg);
@@ -59,14 +59,23 @@ void Logger::err(const std::string& msg) {
 void Logger::fatal(const std::string& msg) {
     std::string timestamp = getCurrentTimeISO();
     std::cout << timestamp << " [FATAL] " + static_cast<std::string>( __FILE__) + static_cast<char>(__LINE__);
-    color::print::magenta().bold() << msg;
-    std::cout << std::endl;
+    auto p = color::print::magenta().bold() << msg;
+    p.println();
+
+    
     
     if(WRITE_TO_FILE) {
         writelog(timestamp + " [FATAL] " +  + __FILE__ + static_cast<char>(__LINE__) + msg);
     }
     std::runtime_error("Fatal called " +static_cast<std::string>( __FILE__) + static_cast<char>(__LINE__));
 
+}
+
+void Logger::debug(const std::string& msg) {
+    std::string timestamp = getCurrentTimeISO();
+    std::cout << timestamp << " [DEBUG] " + static_cast<std::string>( __FILE__) + static_cast<char>(__LINE__);
+    auto p = color::print::green().bold() << msg;
+    p.println();
 }
 
 void Logger::writelog(const std::string& towrite) {

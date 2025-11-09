@@ -16,7 +16,7 @@
 std::atomic<bool> running{true};
 
 int main() {
-     color::print::red() << "Text";
+     color::print::red() << "Text" << color::print::println;
 
     std::cout << "Starting HeavenGate Load Balancer" << std::endl;
     try {

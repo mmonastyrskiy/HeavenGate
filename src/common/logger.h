@@ -15,6 +15,7 @@ public:
     static void warn(const std::string&);
     static void err(const std::string&);
     static void fatal(const std::string&);
+    static void debug(const std::string&);
     static void writelog(const std::string&);
 
 private:
