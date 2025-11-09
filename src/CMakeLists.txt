@@ -11,6 +11,7 @@ set(SRC_FILES
     DataBus/DataBus.cpp
     LoadBalancer/LoadBalancer.cpp
     common/Argparcer.cpp
+    common/logger.cpp
     API/dashboardAPI.cpp
 )
 
@@ -19,8 +20,10 @@ set(HEADER_FILES
     DataBus/DataBusMetrics.h
     DataBus/subscriptionID.h
     LoadBalancer/LoadBalancer.h
-    ../thirdparty/json.hpp
+    ../thirdparty/colorText.h
+    ../include/json.hpp
     common/Argparcer.h
+    common/logger.h
     API/dashboardAPI.h
 )
 
@@ -28,7 +31,24 @@ set(HEADER_FILES
 add_executable(heavengate
     ${SRC_FILES}
     ${HEADER_FILES}
+    common/logger.h common/logger.cpp
 )
+
+# ==================== HEADER-ONLY БИБЛИОТЕКИ ====================
+
+# 1. JSON библиотека (nlohmann/json)
+add_library(json_header_only INTERFACE)
+add_library(colorText INTERFACE)
+target_include_directories(json_header_only INTERFACE
+    ${CMAKE_SOURCE_DIR}/thirdparty
+)
+
+
+target_include_directories(colorText INTERFACE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+# ==================== КОНЕЦ HEADER-ONLY БИБЛИОТЕК ====================
 
 # Определяем целевую ОС
 if(WIN32)
@@ -79,11 +99,13 @@ target_include_directories(heavengate PRIVATE
     ${CURL_INCLUDE_DIR}
 )
 
-# Зависимости
+# Зависимости (ДОБАВЛЯЕМ HEADER-ONLY БИБЛИОТЕКИ)
 target_link_libraries(heavengate PRIVATE
     pthread
     ${CURL_LIBRARY}
     ${PLATFORM_LIBS}
+    json_header_only  # Добавляем header-only библиотеку
+    colorText
 )
 
 # Компиляционные флаги
