@@ -25,8 +25,8 @@ std::string Logger::getCurrentTimeISO() {
 
 void Logger::info(const std::string& msg) {
     std::string timestamp = getCurrentTimeISO();
-    std::cout << timestamp << " [INFO] ";
-    auto p = color::print::info() << msg;
+    std::cout << timestamp;
+    auto p = color::print::info() << " [INFO] " << msg;
     p.println();
     
     if(WRITE_TO_FILE) {
@@ -36,8 +36,8 @@ void Logger::info(const std::string& msg) {
 
 void Logger::warn(const std::string& msg) {
     std::string timestamp = getCurrentTimeISO();
-    std::cout << timestamp << " [WARN] ";
-    auto p = color::print::warning() << msg;
+    std::cout << timestamp ;
+    auto p = color::print::warning() <<" [WARN] " << msg;
     p.println();
     
     if(WRITE_TO_FILE) {
@@ -47,8 +47,8 @@ void Logger::warn(const std::string& msg) {
 
 void Logger::err(const std::string& msg) {
     std::string timestamp = getCurrentTimeISO();
-    std::cout << timestamp << " [ERROR] " + static_cast<std::string>( __FILE__) + static_cast<char>(__LINE__);;
-    auto p = color::print::error() << msg;
+    std::cout << timestamp;
+    auto p = color::print::error() << " [ERROR] " + static_cast<std::string>( __FILE__) + static_cast<char>(__LINE__) << " " << msg;
     p.println();
     
     if(WRITE_TO_FILE) {
@@ -58,8 +58,8 @@ void Logger::err(const std::string& msg) {
 
 void Logger::fatal(const std::string& msg) {
     std::string timestamp = getCurrentTimeISO();
-    std::cout << timestamp << " [FATAL] " + static_cast<std::string>( __FILE__) + static_cast<char>(__LINE__);
-    auto p = color::print::magenta().bold() << msg;
+    std::cout << timestamp;
+    auto p = color::print::magenta().bold() << " [FATAL] " + static_cast<std::string>( __FILE__) + static_cast<char>(__LINE__) <<" "<< msg;
     p.println();
 
     
@@ -73,8 +73,8 @@ void Logger::fatal(const std::string& msg) {
 
 void Logger::debug(const std::string& msg) {
     std::string timestamp = getCurrentTimeISO();
-    std::cout << timestamp << " [DEBUG] " + static_cast<std::string>( __FILE__) + static_cast<char>(__LINE__);
-    auto p = color::print::green().bold() << msg;
+    std::cout << timestamp;
+    auto p = color::print::green().bold() << " [DEBUG] " + static_cast<std::string>( __FILE__) + static_cast<char>(__LINE__) << " " << msg;
     p.println();
 }
 

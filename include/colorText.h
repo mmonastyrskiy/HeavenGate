@@ -35,8 +35,6 @@ public:
     // Явно разрешаем перемещение
     TextBuilder(const TextBuilder&) = default;
     TextBuilder& operator=(TextBuilder&&) = default;
-    // Запрещаем копирование
-    TextBuilder(const TextBuilder&) = delete;
 
     // Основной метод для добавления текста
     template<typename T>
