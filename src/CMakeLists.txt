@@ -12,6 +12,7 @@ set(SRC_FILES
     LoadBalancer/LoadBalancer.cpp
     common/Argparcer.cpp
     common/logger.cpp
+    common/Confparcer.cpp
     API/dashboardAPI.cpp
 )
 
@@ -24,6 +25,7 @@ set(HEADER_FILES
     ../thirdparty/json.hpp
     common/Argparcer.h
     common/logger.h
+    common/Confparcer.h
     API/dashboardAPI.h
 )
 
