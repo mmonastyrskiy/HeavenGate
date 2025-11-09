@@ -11,6 +11,10 @@
 
 #include <unordered_map>
 #include <string>
+#include <Argparcer.h>
+#include "logger.h"
+#include "../../include/strconv.h"
+#include <stdexcept>
 
 #define CONF_PATH "../../config/config.ini"
 
@@ -27,6 +31,31 @@ public:
     
     int parce();
 std::string get(const std::string& key, int* error_code) const;
+
+template<typename T>
+T SETTING(const std::string& sett, const T& default_value = T{}) {
+    std::string arg = Argparcer::the().get(sett);
+    std::string conf = Confparcer::the().get(sett);
+    
+    std::string value;
+    
+    // Приоритет: аргументы командной строки > конфиг файл > значение по умолчанию
+    if (!arg.empty()) {
+        value = arg;
+    } else if (!conf.empty()) {
+        value = conf;
+    } else {
+        logger::Logger::warn("Using default value for setting: " + sett);
+        return default_value;
+    }
+    
+    try {
+        return convertFromString<T>(value);
+    } catch (const std::invalid_argument& e) {
+        logger::Logger::fatal("Conversion failed for setting '" + sett + "'. Value: '" + value + "', Expected type: " + typeid(T).name());
+        return default_value;
+    }
+}
 
 
 private:

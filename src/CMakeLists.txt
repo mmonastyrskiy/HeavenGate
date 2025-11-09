@@ -22,6 +22,7 @@ set(HEADER_FILES
     DataBus/subscriptionID.h
     LoadBalancer/LoadBalancer.h
     ../include/colorText.h
+    ../include/strconv.h
     ../thirdparty/json.hpp
     common/Argparcer.h
     common/logger.h

@@ -67,7 +67,7 @@ int Confparcer::parce() {
     return ErrorCodes::SUCCESS; // or appropriate success code
 }
 
-std::string Confparcer::get(const std::string& key, int* error_code) const {
+std::string Confparcer::get(const std::string& key, int* error_code = nullptr) const {
     // Provide default error code if null pointer is passed
     int dummy_error;
     int& e = error_code ? *error_code : dummy_error;

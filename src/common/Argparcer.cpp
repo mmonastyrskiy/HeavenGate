@@ -83,6 +83,7 @@ namespace Argparcer {
                 return it.val;
             }
         }
+        logger::Logger::warn("Unable to get flag " + s );
         return "";
     }
 
