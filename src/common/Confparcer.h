@@ -16,7 +16,7 @@
 #include "../../include/strconv.h"
 #include <stdexcept>
 
-#define CONF_PATH "../../config/config.ini"
+#define HG_ENVKEY "HG_BASE"
 
 
 enum ErrorCodes {
@@ -64,4 +64,6 @@ private:
     Confparcer& operator=(const Confparcer&) = delete;
 
     std::unordered_map<std::string, std::string> config;
+
+    std::string getconfig();
 };

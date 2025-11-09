@@ -12,6 +12,8 @@
 #include "logger.h"
 #include <algorithm> // for std::remove
 #include <cctype>    // for std::isspace
+#include <cstdlib>
+#include <filesystem>
 
 Confparcer& Confparcer::the() {
     static Confparcer c;
@@ -19,7 +21,8 @@ Confparcer& Confparcer::the() {
 }
 
 int Confparcer::parce() {
-    std::ifstream cfile(CONF_PATH); 
+    std::string path = getconfig();
+    std::ifstream cfile(path); 
     
     if (!cfile.is_open()) {
         logger::Logger::fatal("Failed to open config file, please check the path");
@@ -83,4 +86,18 @@ std::string Confparcer::get(const std::string& key, int* error_code = nullptr) c
     e = ErrorCodes::NO_OPT_IN_CONFIG;
         return "";
     }
+}
+std::string getconfig(){
+const char* env;
+
+env = std::getenv(HG_ENVKEY);
+if (env == nullptr){
+std::filesystem::path base = "/var/HeavenGate"; //TODO: Has to be created
+}
+std::filesystem::path base = env;
+std::filesystem::path config = base /= "config";
+config += "default.ini";
+return config.string();
+
+
 }
