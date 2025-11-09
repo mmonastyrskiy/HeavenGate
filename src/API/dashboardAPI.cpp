@@ -5,7 +5,7 @@
 #include <sstream>
 #include <iomanip>
 #include <memory>
-
+#include "../common/logger.h"
 // Callback function for cURL
 static size_t WriteCallback(void* contents, size_t size, size_t nmemb, std::string* response) {
     size_t totalSize = size * nmemb;
@@ -90,6 +90,7 @@ std::string DashboardAPI::callUserRegistered(const std::string& client_ip,
         std::cerr << "cURL error: " << curl_easy_strerror(res) << std::endl;
         if(err) *err = static_cast<int>(res);
         response = "";
+        logger::Logger::warn("Error connecting to the dashboard");
     } else {
         long http_code = 0;
         curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);

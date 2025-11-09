@@ -1,4 +1,5 @@
 #include "Argparcer.h"
+#include "logger.h"
 #include <algorithm>
 #include <iostream>
 #include <string>
@@ -68,6 +69,7 @@ namespace Argparcer {
         for(const auto& key : registered_keys) {
             if(key.is_required && key.val.empty()) {
                 std::cout << "Required parameter: " << key.name << " is missing" << std::endl;
+                logger::Logger::fatal("Arg" + key.name + "Is not valid please check it again");
                 return REQUIRED_MISSING;
             }
         }
@@ -90,6 +92,7 @@ namespace Argparcer {
                 if(it.astype == supportedTypes::bool_type) {
                     return it.name;
                 } else {
+                    logger::Logger::warn("Arg" + s + "Is not valid please check it again");
                     return std::to_string(REQUIRE_VALUE);
                 }
             }

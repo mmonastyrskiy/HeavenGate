@@ -1,3 +1,4 @@
+#pragma once
 #include <string>
 #ifndef LOGGER_H
 #define LOGGER_H
