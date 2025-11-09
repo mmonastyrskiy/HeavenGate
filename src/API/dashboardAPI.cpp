@@ -1,3 +1,12 @@
+/*
+ * Filename: d:\HeavenGate\src\API\dashboardAPI.cpp
+ * Path: d:\HeavenGate\src\API
+ * Created Date: Saturday, November 8th 2025, 8:50:32 am
+ * Author: mmonastyrskiy
+ * 
+ * Copyright (c) 2025 Your Company
+ */
+
 #include "dashboardAPI.h"
 #include <curl/curl.h>
 #include <iostream>

@@ -1,4 +1,14 @@
+/*
+ * Filename: d:\HeavenGate\src\LoadBalancer\LoadBalancer.cpp
+ * Path: d:\HeavenGate\src\LoadBalancer
+ * Created Date: Saturday, November 9th 2025
+ * Author: mmonastyrskiy
+ * 
+ 
+ */
+
 #include "LoadBalancer.h"
+#include "../common/logger.h"
 #include <algorithm>
 #include <iostream>
 #include "../API/dashboardAPI.h"
@@ -19,6 +29,7 @@ LoadBalancer::LoadBalancer(RoutingStrategy strategy)
             this->handle_health_update(event);
         }
     );
+
 
     classification_sub_ = DataBus::instance().subscribe(
         BusEventType::REQUEST_CLASSIFIED,
@@ -62,6 +73,7 @@ void LoadBalancer::add_backend(std::shared_ptr<BackendNode> server_ptr) {
                                 {"weight", std::to_string(server_ptr->weight)}
         }
     );
+    logger::Logger::info("New host registered" + server_ptr->host + "Is honeypot:" + (server_ptr->is_honeypot ? "true" : "false"));
 }
 
 std::shared_ptr<BackendNode> LoadBalancer::select_backend(bool is_malicious, const std::string& client_ip) {
@@ -142,6 +154,7 @@ std::shared_ptr<BackendNode> LoadBalancer::select_backend(bool is_malicious, con
                                     {"routing_time_ns", routing_time_ns},
                                     {"total_requests", selected->total_requests.load()}
             }
+
         );
         int err = 0;
         DashboardAPI::the().callUserRegistered(client_ip,selected->id,is_malicious,&err);

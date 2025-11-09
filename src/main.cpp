@@ -1,3 +1,13 @@
+/*
+ * Filename: d:\HeavenGate\src\main.cpp
+ * Path: d:\HeavenGate\src
+ * Created Date: Sunday, November 9th 2025, 12:15:21 am
+ * Author: mmonastyrskiy
+ * 
+ * Copyright (c) 2025 Your Company
+ */
+
+
 #include <iostream>
 #include "LoadBalancer/LoadBalancer.h"
 #include "DataBus/DataBus.h"

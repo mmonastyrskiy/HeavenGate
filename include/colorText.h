@@ -1,3 +1,12 @@
+/*
+ * Filename: d:\HeavenGate\include\colorText.h
+ * Path: d:\HeavenGate\include
+ * Created Date: Saturday, November 8th 2025, 11:03:47 pm
+ * Author: mmonastyrskiy
+ * 
+ * Copyright (c) 2025 Your Company
+ */
+
 #ifndef COLOR_TEXT_H
 #define COLOR_TEXT_H
 
