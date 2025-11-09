@@ -1,3 +1,12 @@
+/*
+ * Filename: d:\HeavenGate\src\API\dashboardAPI.h
+ * Path: d:\HeavenGate\src\API
+ * Created Date: Saturday, November 8th 2025, 8:50:32 am
+ * Author: mmonastyrskiy
+ * 
+ * Copyright (c) 2025 Your Company
+ */
+
 #ifndef DASHBOARDAPI_HPP
 #define DASHBOARDAPI_HPP
 

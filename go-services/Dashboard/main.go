@@ -1,5 +1,13 @@
-package main
+/*
+ * Filename: d:\HeavenGate\go-services\Dashboard\main.go
+ * Path: d:\HeavenGate\go-services\Dashboard
+ * Created Date: Saturday, November 8th 2025, 11:02:28 am
+ * Author: mmonastyrskiy
+ * 
+ */
 
+package main
+.
 import (
 	"encoding/json"
 	"fmt"

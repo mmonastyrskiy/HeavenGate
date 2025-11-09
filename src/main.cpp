@@ -1,12 +1,24 @@
+/*
+ * Filename: d:\HeavenGate\src\main.cpp
+ * Path: d:\HeavenGate\src
+ * Created Date: Sunday, November 9th 2025, 12:15:21 am
+ * Author: mmonastyrskiy
+ * 
+ * Copyright (c) 2025 Your Company
+ */
+
+
 #include <iostream>
 #include "LoadBalancer/LoadBalancer.h"
 #include "DataBus/DataBus.h"
+#include "../include/colorText.h"
 
 std::atomic<bool> running{true};
 
 int main() {
-    std::cout << "Starting HeavenGate Load Balancer" << std::endl;
+     color::print::red() << "Text" << color::print::println;
 
+    std::cout << "Starting HeavenGate Load Balancer" << std::endl;
     try {
         // Создаем балансировщик
         LoadBalancer balancer(RoutingStrategy::ROUND_ROBIN);

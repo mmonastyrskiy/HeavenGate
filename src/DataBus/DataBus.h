@@ -1,3 +1,14 @@
+
+/*
+ * Filename: d:\HeavenGate\src\DataBus\DataBus.h
+ * Path: d:\HeavenGate\src\DataBus
+ * Created Date: Saturday, November 8th 2025, 8:50:32 am
+ * Author: mmonastyrskiy
+ * 
+ * Copyright (c) 2025 Your Company
+ */
+
+
 #pragma once
 
 #include <memory>

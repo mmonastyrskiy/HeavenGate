@@ -1,4 +1,5 @@
 #include "Argparcer.h"
+#include "logger.h"
 #include <algorithm>
 #include <iostream>
 #include <string>
@@ -17,7 +18,8 @@ namespace Argparcer {
     int Argparcer::register_key(std::string flag, std::string helpstring, bool required, supportedTypes astype) {
         for(const auto& it : registered_keys) {
             if (it.name == flag) {
-                std::cout << "The flag " << flag << " already registered" << std::endl;
+                logger::Logger::warn( "The flag " + flag + " already registered\n"+
+                "SKIPPING!");
                 return KEY_NOT_UNIQUE;
             }
         }
@@ -41,7 +43,7 @@ namespace Argparcer {
 
                 if(validation == std::to_string(REQUIRE_VALUE)) {
                     if(i + 1 >= argc || std::string(argv[i + 1]).front() == '-') {
-                        std::cout << "Value for " << arg << " is missing" << std::endl;
+                        logger::Logger::fatal("Value for " + arg + "Is missing");
                         return REQUIRE_VALUE;
                     }
 
@@ -67,7 +69,7 @@ namespace Argparcer {
 
         for(const auto& key : registered_keys) {
             if(key.is_required && key.val.empty()) {
-                std::cout << "Required parameter: " << key.name << " is missing" << std::endl;
+                logger::Logger::fatal("Arg" + key.name + "Is not valid please check it again");
                 return REQUIRED_MISSING;
             }
         }
@@ -90,6 +92,7 @@ namespace Argparcer {
                 if(it.astype == supportedTypes::bool_type) {
                     return it.name;
                 } else {
+                    logger::Logger::warn("Arg" + s + "Is not valid please check it again");
                     return std::to_string(REQUIRE_VALUE);
                 }
             }

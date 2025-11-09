@@ -1,3 +1,13 @@
+/*
+ * Filename: d:\HeavenGate\src\LoadBalancer\LoadBalancer.h
+ * Path: d:\HeavenGate\src\LoadBalancer
+ * Created Date: Saturday, November 8th 2025, 8:50:32 am
+ * Author: mmonastyrskiy
+ * 
+ * Copyright (c) 2025 Your Company
+ */
+
+
 #pragma once
 
 #include <atomic>

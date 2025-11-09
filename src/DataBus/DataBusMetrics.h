@@ -1,3 +1,14 @@
+
+/*
+ * Filename: d:\HeavenGate\src\DataBus\DataBusMetrics.h
+ * Path: d:\HeavenGate\src\DataBus
+ * Created Date: Thursday, October 30th 2025, 6:59:55 pm
+ * Author: mmonastyrskiy
+ * 
+ * Copyright (c) 2025 Your Company
+ */
+
+
 #pragma once
 #include <atomic>
 #include <cstdint>

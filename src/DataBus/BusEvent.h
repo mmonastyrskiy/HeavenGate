@@ -1,3 +1,12 @@
+
+/*
+ * Filename: d:\HeavenGate\src\DataBus\BusEvent.h
+ * Path: d:\HeavenGate\src\DataBus
+ * Created Date: Monday, November 3rd 2025, 5:39:44 pm
+ * Author: mmonastyrskiy
+ * 
+ * Copyright (c) 2025 Your Company
+ */
 #pragma once
 #include <string>
 #include <chrono>
