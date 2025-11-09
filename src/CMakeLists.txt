@@ -20,8 +20,8 @@ set(HEADER_FILES
     DataBus/DataBusMetrics.h
     DataBus/subscriptionID.h
     LoadBalancer/LoadBalancer.h
-    ../thirdparty/colorText.h
-    ../include/json.hpp
+    ../include/colorText.h
+    ../thirdparty/json.hpp
     common/Argparcer.h
     common/logger.h
     API/dashboardAPI.h
