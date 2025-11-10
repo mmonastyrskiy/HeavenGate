@@ -87,7 +87,7 @@ std::string Confparcer::get(const std::string& key, int* error_code = nullptr) c
         return "";
     }
 }
-std::string getconfig(){
+std::string Confparcer::getconfig() const{
 const char* env;
 
 env = std::getenv(HG_ENVKEY);

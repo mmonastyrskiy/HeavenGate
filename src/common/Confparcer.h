@@ -11,7 +11,7 @@
 
 #include <unordered_map>
 #include <string>
-#include <Argparcer.h>
+#include "Argparcer.h"
 #include "logger.h"
 #include "../../include/strconv.h"
 #include <stdexcept>
@@ -34,7 +34,8 @@ std::string get(const std::string& key, int* error_code) const;
 
 template<typename T>
 T SETTING(const std::string& sett, const T& default_value = T{}) {
-    std::string arg = Argparcer::the().get(sett);
+    std::string arg = Argparcer::Argparcer::the().get(sett,&e);
+    int e = 0;
     std::string conf = Confparcer::the().get(sett);
     
     std::string value;
@@ -56,7 +57,7 @@ T SETTING(const std::string& sett, const T& default_value = T{}) {
         return default_value;
     }
 }
-
+std::string getconfig() const;
 
 private:
     Confparcer() = default;
@@ -65,5 +66,4 @@ private:
 
     std::unordered_map<std::string, std::string> config;
 
-    std::string getconfig();
 };
