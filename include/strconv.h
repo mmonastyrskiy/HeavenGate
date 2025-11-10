@@ -59,3 +59,54 @@ template<>
 const char* convertFromString<const char*>(const std::string& str) {
     return str.c_str();
 }
+
+template<>
+size_t convertFromString<size_t>(const std::string& str) {
+    if (str.empty()) {
+        throw std::invalid_argument("Empty string cannot be converted to size_t");
+    }
+    
+    // Убираем пробелы по краям
+    size_t start = str.find_first_not_of(" \t");
+    if (start == std::string::npos) {
+        throw std::invalid_argument("String contains only whitespace");
+    }
+    
+    size_t end = str.find_last_not_of(" \t");
+    std::string trimmed = str.substr(start, end - start + 1);
+    
+    // Проверяем на отрицательные числа
+    if (trimmed[0] == '-') {
+        throw std::invalid_argument("Negative value cannot be converted to size_t: " + trimmed);
+    }
+    
+    // Проверяем, что строка состоит только из цифр (и возможного префикса)
+    bool has_digits = false;
+    for (size_t i = 0; i < trimmed.length(); ++i) {
+        if (std::isdigit(trimmed[i])) {
+            has_digits = true;
+        } else if (i > 0) {
+            // Разрешаем только цифры после первого символа
+            throw std::invalid_argument("Invalid character in size_t conversion: " + trimmed);
+        }
+    }
+    
+    if (!has_digits) {
+        throw std::invalid_argument("No digits found in string: " + trimmed);
+    }
+    
+    std::istringstream iss(trimmed);
+    size_t result;
+    
+    if (!(iss >> result)) {
+        throw std::invalid_argument("Cannot convert string to size_t: " + trimmed);
+    }
+    
+    // Проверяем переполнение (для очень больших чисел)
+    std::string reconstructed = std::to_string(result);
+    if (reconstructed != trimmed) {
+        throw std::invalid_argument("Value out of range for size_t: " + trimmed);
+    }
+    
+    return result;
+}

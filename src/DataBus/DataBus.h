@@ -30,17 +30,24 @@
 #include "BusEvent.h"
 #include "subscriptionID.h"
 #include "DataBusMetrics.h"
+#include "../common/Confparcer.h"
 
 class DataBus {
 public:
-    static constexpr size_t MAX_QUEUE_SIZE = 10000;
+       static inline const size_t MAX_QUEUE_SIZE = []() {
+        return Confparcer::SETTING<size_t>("MAX_BUS_QUEUE_SIZE", 100000);
+    }();
+
+        static inline const size_t TIMEOUT = [](){
+        return Confparcer::SETTING<size_t>("BUS_REQUST_TIMEOUT", 1);
+    }();
 
     static DataBus& instance();
     void publish(BusEventType type, const std::string& source, const nlohmann::json& data);
     SubscriptionId subscribe(BusEventType type, EventCallback callback);
     void unsubscribe(SubscriptionId id);
     nlohmann::json request(BusEventType type, const nlohmann::json& data,
-                           std::chrono::milliseconds timeout = std::chrono::seconds(1));
+                           std::chrono::milliseconds timeout = std::chrono::seconds(TIMEOUT));
     void start();
     void stop();
     DataBusMetricsSnapshot get_metrics() const;
@@ -56,6 +63,7 @@ private:
         SubscriptionId id;
         EventCallback callback;
     };
+
 
     std::queue<Event> events_queue_;
     mutable std::mutex events_mutex_;
