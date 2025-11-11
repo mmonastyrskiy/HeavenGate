@@ -48,33 +48,27 @@ if(GO_EXECUTABLE)
     
     # Проверяем существует ли go.mod файл
     if(EXISTS "${GO_DASHBOARD_DIR}/go.mod")
-        # Читаем имя модуля из go.mod
-        file(READ "${GO_DASHBOARD_DIR}/go.mod" GO_MOD_CONTENT)
-        string(REGEX MATCH "module[ \t]+([^ \t\n]+)" MODULE_MATCH ${GO_MOD_CONTENT})
+        # Создаем директорию для выходных файлов Go
+        set(GO_OUTPUT_DIR "${CMAKE_BINARY_DIR}/bin/go-apps")
         
-        if(MODULE_MATCH)
-            set(GO_MODULE_NAME ${CMAKE_MATCH_1})
-            message(STATUS "Found Go module: ${GO_MODULE_NAME}")
-            
-            add_custom_target(go-dashboard ALL
-                COMMAND ${GO_EXECUTABLE} build -o ${CMAKE_CURRENT_BINARY_DIR}/go-apps/dashboard .
-                WORKING_DIRECTORY ${GO_DASHBOARD_DIR}
-                COMMENT "Building Go Dashboard from module ${GO_MODULE_NAME}"
-                VERBATIM
-            )
-        else()
-            # Если не нашли module, используем текущую директорию
-            add_custom_target(go-dashboard ALL
-                COMMAND ${GO_EXECUTABLE} build -o ${CMAKE_CURRENT_BINARY_DIR}/go-apps/dashboard .
-                WORKING_DIRECTORY ${GO_DASHBOARD_DIR}
-                COMMENT "Building Go Dashboard from current directory"
-                VERBATIM
-            )
-        endif()
+        add_custom_command(
+            OUTPUT ${GO_OUTPUT_DIR}/dashboard
+            COMMAND ${CMAKE_COMMAND} -E make_directory ${GO_OUTPUT_DIR}
+            COMMAND ${GO_EXECUTABLE} build -o ${GO_OUTPUT_DIR}/dashboard .
+            WORKING_DIRECTORY ${GO_DASHBOARD_DIR}
+            COMMENT "Building Go Dashboard"
+            VERBATIM
+        )
         
-        # Создаем директорию для выходных файлов
-        add_custom_command(TARGET go-dashboard PRE_BUILD
-            COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/go-apps
+        add_custom_target(go-dashboard ALL
+            DEPENDS ${GO_OUTPUT_DIR}/dashboard
+        )
+        
+        # Установка Go бинарника
+        install(
+            FILES ${GO_OUTPUT_DIR}/dashboard
+            DESTINATION bin/go-apps
+            PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
         )
         
     else()

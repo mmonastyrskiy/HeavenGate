@@ -72,7 +72,7 @@ inline bool AppComponent::run() {
     pid_t pid = fork();
     if (pid == 0) {
         // Child process
-        execl(path.c_str(), "HG_DASHBOARD", nullptr);
+        execl(path.c_str(), "main", NULL);
         logger::Logger::err("Failed to run " + name);
         return false;
     }
