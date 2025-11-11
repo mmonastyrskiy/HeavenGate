@@ -12,6 +12,7 @@
 namespace logger {
 
         static bool WRITE_TO_FILE() {
+            return false; //TODO: Remove me when having config
         static bool value = Confparcer::SETTING<bool>("ENABLE_LOG_FILE", false);
         return value;
     }
