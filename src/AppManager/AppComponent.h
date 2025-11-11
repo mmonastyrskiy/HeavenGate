@@ -18,6 +18,8 @@
 #include <sys/types.h>
 #include <signal.h>
 #include <cstring>
+#include <thread>
+#include <atomic>
 #include "../common/generic.h"
 #include "../common/logger.h"
 #if ISLINUX
@@ -35,6 +37,10 @@ private:
     std::filesystem::path path;
     size_t pid = 0;
     int timeout_seconds = 10;
+    std::atomic<bool> is_running{false};
+    std::unique_ptr<std::thread> monitor_thread;
+
+    void monitor_process(); // Мониторинг процесса в отдельном потоке
 
 public:
     size_t proc_pid;
@@ -46,6 +52,7 @@ public:
 
     inline bool run();
     inline bool stop();
+    inline bool isRunning() const { return is_running.load(); }
 };
 
 inline AppComponent::AppComponent(AppComponentType comp_type)
@@ -65,34 +72,72 @@ inline AppComponent::AppComponent(AppComponentType comp_type)
 inline AppComponent::~AppComponent()
 {
     stop();
+    // Ждем завершения мониторингового потока если он запущен
+    if (monitor_thread && monitor_thread->joinable()) {
+        monitor_thread->join();
+    }
+}
+
+inline void AppComponent::monitor_process() {
+#if ISLINUX
+    int status;
+    pid_t monitored_pid = this->pid;
+    
+    // Ждем завершения процесса
+    waitpid(monitored_pid, &status, 0);
+    
+    if (WIFEXITED(status)) {
+        int exit_code = WEXITSTATUS(status);
+        if (exit_code != 0) {
+            logger::Logger::err("Service " + name + " Exited with: " + std::to_string(exit_code) + " Code. Restarting!");
+            // Перезапускаем в том же потоке мониторинга
+            is_running = false;
+            run();
+        } else {
+            logger::Logger::info("Service " + name + " Stopped gracefully.");
+            is_running = false;
+        }
+    } else if (WIFSIGNALED(status)) {
+        int signal = WTERMSIG(status);
+        logger::Logger::err("Service " + name + " Terminated by signal: " + std::to_string(signal));
+        is_running = false;
+    }
+#endif
 }
 
 inline bool AppComponent::run() {
 #if ISLINUX
-    pid_t pid = fork();
-    if (pid == 0) {
-        // Child process
-        execl(path.c_str(), "dashboard", NULL);
-        logger::Logger::err("Failed to run " + name);
-        return false;
+    if (is_running.load()) {
+        logger::Logger::warn("Service " + name + " is already running");
+        return true;
     }
-    else if (pid > 0) {
-        // Parent process
-        int status;
-        proc_pid = pid;
-        this->pid = pid;
-        waitpid(pid, &status, 0); 
-        if (status != 0) {
-            logger::Logger::err("Service " + name + " Exited with: " + std::to_string(status) + " Code. \n Restarting!");
-            run(); // Recursive restart
+
+    pid_t child_pid = fork();
+    if (child_pid == 0) {
+        // Дочерний процесс
+        execl(path.c_str(), name.c_str(), NULL);
+        // Если execl вернул управление - ошибка
+        logger::Logger::err("Failed to run " + name + ": " + std::string(strerror(errno)));
+        exit(EXIT_FAILURE);
+    }
+    else if (child_pid > 0) {
+        // Родительский процесс
+        proc_pid = child_pid;
+        this->pid = child_pid;
+        is_running = true;
+        
+        logger::Logger::info("Service " + name + " started with PID: " + std::to_string(child_pid));
+        
+        // Запускаем мониторинг в отдельном потоке
+        if (monitor_thread && monitor_thread->joinable()) {
+            monitor_thread->join();
         }
-        else {
-            logger::Logger::info("Service " + name + " Stopped!");
-        }
+        monitor_thread = std::make_unique<std::thread>(&AppComponent::monitor_process, this);
+        
         return true;
     }
     else {
-        logger::Logger::err("Failed to run " + name + " Fork failed");
+        logger::Logger::err("Failed to run " + name + " - Fork failed: " + std::string(strerror(errno)));
         return false;
     }
 #else
@@ -105,7 +150,7 @@ inline bool AppComponent::run() {
 
 inline bool AppComponent::stop() {
 #if ISLINUX
-    if (pid == 0) {
+    if (!is_running.load() || pid == 0) {
         logger::Logger::warn("Process " + name + " not running");
         return true;
     }
@@ -114,6 +159,9 @@ inline bool AppComponent::stop() {
     if (kill(pid, 0) != 0) {
         if (errno == ESRCH) {
             logger::Logger::warn("Process " + name + "[ " + std::to_string(pid) + " ]" + " Not found! Unable to stop!");
+            is_running = false;
+            pid = 0;
+            proc_pid = 0;
         } else {
             logger::Logger::warn("Cannot access process of " + name + "[" + std::to_string(pid) + "]" + " Reason: " + strerror(errno));
         }
@@ -133,6 +181,7 @@ inline bool AppComponent::stop() {
         if (kill(pid, 0) != 0) {
             if (errno == ESRCH) {
                 logger::Logger::info("Process " + name + "[" + std::to_string(pid) + "]" + " terminated gracefully.");
+                is_running = false;
                 pid = 0;
                 proc_pid = 0;
                 return true;
@@ -155,6 +204,7 @@ inline bool AppComponent::stop() {
     }
     
     logger::Logger::info("Process " + name + "[" + std::to_string(pid) + "]" + " killed successfully.");
+    is_running = false;
     pid = 0;
     proc_pid = 0;
     return true;
