@@ -1,3 +1,12 @@
+/*
+ * Filename: d:\HeavenGate\src\AppManager\AppManager.cpp
+ * Path: d:\HeavenGate\src\AppManager
+ * Created Date: Tuesday, November 11th 2025, 8:38:24 pm
+ * Author: mmonastyrskiy
+ * 
+ * Copyright (c) 2025 Your Company
+ */
+
 #include "AppManager.h"
 #include "AppComponent.h"
 #include "../common/logger.h"
@@ -18,3 +27,9 @@ void AppManager::stop(){
     components.clear();
 }
 
+AppManager& AppManager::the(){
+    static AppManager instance;
+    return instance;
+
+
+}

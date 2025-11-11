@@ -30,12 +30,20 @@ set(HEADER_FILES
     API/dashboardAPI.h
 )
 
+add_custom_target(go-dashboard ALL
+    COMMAND go build -o ${CMAKE_CURRENT_BINARY_DIR}/go-apps HGDashboard
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/go-services/Dashboard
+    COMMENT "Building Go Dashboard"
+)
+
+
 # Основной исполняемый файл
 add_executable(heavengate
     ${SRC_FILES}
     ${HEADER_FILES}
-    common/logger.h common/logger.cpp
 )
+
+add_dependencies(heavengate go-dashboard)
 
 # ==================== HEADER-ONLY БИБЛИОТЕКИ ====================
 

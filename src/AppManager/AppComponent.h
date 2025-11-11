@@ -1,3 +1,13 @@
+/*
+ * Filename: d:\HeavenGate\src\AppManager\AppComponent.h
+ * Path: d:\HeavenGate\src\AppManager
+ * Created Date: Tuesday, November 11th 2025, 8:38:24 pm
+ * Author: mmonastyrskiy
+ * 
+ * Copyright (c) 2025 Your Company
+ */
+
+#pragma once
 #include <filesystem>
 #include <cstdio>
 #include <memory>
@@ -133,11 +143,8 @@ AppComponent::AppComponent(AppComponentType type)
 {
     switch(type) {
         case AppComponentType::HG_DASHBOARD: {
-            path /= "..";
-            path /= ".."; 
-            path /= "go-services";
-            path /= "Dashboard";
-            path /= "main"; // Use /= for directory separator
+            path /= "go-apps";
+            path += "HGDashboard";
             name = "Dashboard";
             this->type = type;
             break;

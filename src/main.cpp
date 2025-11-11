@@ -11,6 +11,7 @@
 #include <iostream>
 #include "LoadBalancer/LoadBalancer.h"
 #include "DataBus/DataBus.h"
+#include "AppManager/AppManager.h"
 
 std::atomic<bool> running{true};
 
