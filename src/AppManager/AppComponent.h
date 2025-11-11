@@ -19,6 +19,7 @@
 #include <signal.h>
 #include <cstring>
 #include "../common/generic.h"
+#include "../common/logger.h"
 #if ISLINUX
 #include <unistd.h>
 #include <sys/wait.h>
@@ -33,129 +34,131 @@ class AppComponent
 private:
     std::filesystem::path path;
     size_t pid = 0;
-    int timeout_seconds = 10; // Added missing member variable
-
-#if ISLINUX
-
-
-    bool run() {
-        pid_t pid = fork();
-        if (pid == 0) {
-            execl(path.c_str(), "HG_DASHBOARD", nullptr);
-            logger::Logger::err("Failed to run " + name);
-            return false;
-        }
-        else if (pid > 0) {
-            int status;
-            proc_pid = pid;
-            this->pid = pid; // Store the pid
-            waitpid(pid, &status, 0); 
-            if (status != 0) {
-                logger::Logger::err("Service " + name + " Exited with: " + std::to_string(status) + " Code. \n Restarting!");
-                run();
-            }
-            else {
-                logger::Logger::info("Service " + name + " Stopped!");
-            }
-            return true;
-        }
-        else {
-            logger::Logger::err("Failed to run " + name + " Fork failed");
-            return false;
-        }
-    }
-
-    bool stop() {
-        if (pid == 0) {
-            logger::Logger::warn("Process " + name + " not running");
-            return true;
-        }
-
-        if (kill(pid, 0) != 0) {
-            if (errno == ESRCH) {
-                logger::Logger::warn("Process " + name + "[ " + std::to_string(pid) + " ]" + " Not found! Unable to stop!");
-            } else {
-                logger::Logger::warn("Cannot access process of " + name + "[" + std::to_string(pid) + "]" + " Reason: " + strerror(errno));
-            }
-            return false;
-        }
-
-        // Send SIGTERM for graceful shutdown
-        logger::Logger::info("Sending SIGTERM to process " + name + "[" + std::to_string(pid) + "]");
-        if (kill(pid, SIGTERM) != 0) {
-            logger::Logger::warn("Failed to send SIGTERM: " + std::string(strerror(errno)));
-            return false;
-        }
-
-        // Wait for process termination
-        for (int i = 0; i < timeout_seconds; i++) {
-            sleep(1);
-            if (kill(pid, 0) != 0) {
-                if (errno == ESRCH) {
-                    logger::Logger::info("Process " + name + "[" + std::to_string(pid) + "]" + " terminated gracefully.");
-                    pid = 0;
-                    return true;
-                }
-            }
-        }
-
-        logger::Logger::warn("Process " + name + "[" + std::to_string(pid) + "]" + " did not terminate, sending SIGKILL");
-        if (kill(pid, SIGKILL) != 0) {
-            logger::Logger::err("Failed to send SIGKILL: " + std::string(strerror(errno)));
-            return false;
-        }
-        
-        sleep(1); // Give time for SIGKILL to process
-        
-        if (kill(pid, 0) == 0) {
-            logger::Logger::err("Process " + name + "[" + std::to_string(pid) + "]" + " still running after SIGKILL!");
-            return false;
-        }
-        
-        logger::Logger::info("Process " + name + "[" + std::to_string(pid) + "]" + " killed successfully.");
-        pid = 0;
-        return true;
-    }
-
-#else
-    bool run() {
-        // TODO: Implement for other platforms
-        logger::Logger::err("run() not implemented for this platform");
-        TODO();
-        return false;
-    }
-    
-    bool stop() {
-        // TODO: Implement for other platforms  
-        logger::Logger::err("stop() not implemented for this platform");
-        TODO();
-        return false;
-    }
-#endif
+    int timeout_seconds = 10;
 
 public:
     size_t proc_pid;
     AppComponentType type;
     std::string name;
 
-    AppComponent(AppComponentType type);
-    ~AppComponent();
+    inline AppComponent(AppComponentType comp_type);
+    inline ~AppComponent();
+
+    inline bool run();
+    inline bool stop();
 };
 
-AppComponent::AppComponent(AppComponentType type)
+inline AppComponent::AppComponent(AppComponentType comp_type)
 {
-    switch(type) {
+    switch(comp_type) {
         case AppComponentType::HG_DASHBOARD: {
             path /= "go-apps";
             path += "HGDashboard";
             name = "Dashboard";
-            this->type = type;
+            this->type = comp_type;
             break;
         }
     }
 }
 
-AppComponent::~AppComponent()
+inline AppComponent::~AppComponent()
 {
     stop();
+}
+
+inline bool AppComponent::run() {
+#if ISLINUX
+    pid_t pid = fork();
+    if (pid == 0) {
+        // Child process
+        execl(path.c_str(), "HG_DASHBOARD", nullptr);
+        logger::Logger::err("Failed to run " + name);
+        return false;
+    }
+    else if (pid > 0) {
+        // Parent process
+        int status;
+        proc_pid = pid;
+        this->pid = pid;
+        waitpid(pid, &status, 0); 
+        if (status != 0) {
+            logger::Logger::err("Service " + name + " Exited with: " + std::to_string(status) + " Code. \n Restarting!");
+            run(); // Recursive restart
+        }
+        else {
+            logger::Logger::info("Service " + name + " Stopped!");
+        }
+        return true;
+    }
+    else {
+        logger::Logger::err("Failed to run " + name + " Fork failed");
+        return false;
+    }
+#else
+    logger::Logger::err("run() not implemented for this platform");
+    // TODO: Implement for other platforms
+    return false;
+#endif
+}
+
+inline bool AppComponent::stop() {
+#if ISLINUX
+    if (pid == 0) {
+        logger::Logger::warn("Process " + name + " not running");
+        return true;
+    }
+
+    // Check if process exists
+    if (kill(pid, 0) != 0) {
+        if (errno == ESRCH) {
+            logger::Logger::warn("Process " + name + "[ " + std::to_string(pid) + " ]" + " Not found! Unable to stop!");
+        } else {
+            logger::Logger::warn("Cannot access process of " + name + "[" + std::to_string(pid) + "]" + " Reason: " + strerror(errno));
+        }
+        return false;
+    }
+
+    // Send SIGTERM for graceful shutdown
+    logger::Logger::info("Sending SIGTERM to process " + name + "[" + std::to_string(pid) + "]");
+    if (kill(pid, SIGTERM) != 0) {
+        logger::Logger::warn("Failed to send SIGTERM: " + std::string(strerror(errno)));
+        return false;
+    }
+
+    // Wait for process termination
+    for (int i = 0; i < timeout_seconds; i++) {
+        sleep(1);
+        if (kill(pid, 0) != 0) {
+            if (errno == ESRCH) {
+                logger::Logger::info("Process " + name + "[" + std::to_string(pid) + "]" + " terminated gracefully.");
+                pid = 0;
+                proc_pid = 0;
+                return true;
+            }
+        }
+    }
+
+    // Force kill if still running
+    logger::Logger::warn("Process " + name + "[" + std::to_string(pid) + "]" + " did not terminate, sending SIGKILL");
+    if (kill(pid, SIGKILL) != 0) {
+        logger::Logger::err("Failed to send SIGKILL: " + std::string(strerror(errno)));
+        return false;
+    }
+    
+    sleep(1); // Give time for SIGKILL to process
+    
+    if (kill(pid, 0) == 0) {
+        logger::Logger::err("Process " + name + "[" + std::to_string(pid) + "]" + " still running after SIGKILL!");
+        return false;
+    }
+    
+    logger::Logger::info("Process " + name + "[" + std::to_string(pid) + "]" + " killed successfully.");
+    pid = 0;
+    proc_pid = 0;
+    return true;
+#else
+    logger::Logger::err("stop() not implemented for this platform");
+    // TODO: Implement for other platforms  
+    return false;
+#endif
 }
