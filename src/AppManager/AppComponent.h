@@ -68,9 +68,8 @@ inline AppComponent::AppComponent(AppComponentType comp_type)
 {
     switch(comp_type) {
         case AppComponentType::HG_DASHBOARD: {
-            path /= "go-apps";
-            path += "dashboard";
-            name = "Dashboard";
+            path /= "go-apps";;
+            name = "dashboard";
             this->type = comp_type;
             break;
         }
