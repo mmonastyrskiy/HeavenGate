@@ -34,7 +34,7 @@
 
 class DataBus {
 public:
-       static inline const size_t MAX_QUEUE_SIZE = []() {
+        const size_t MAX_QUEUE_SIZE = []() {
         return Confparcer::SETTING<size_t>("MAX_BUS_QUEUE_SIZE", 100000);
     }();
 

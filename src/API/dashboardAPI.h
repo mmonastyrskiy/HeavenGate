@@ -18,10 +18,10 @@ public:
     int err{0};
 
     
-    static inline const char* HOST = [](){
+    const char* HOST = [](){
         return Confparcer::SETTING<const char*>("DASHBOARD_HOST", "127.0.0.1");
     }();
-    static inline const size_t PORT = [](){
+    const size_t PORT = [](){
         return Confparcer::SETTING<size_t>("DASHBOARD_PORT",8081);
     }();
 

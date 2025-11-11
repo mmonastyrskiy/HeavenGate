@@ -6,8 +6,6 @@
 #define LOGGER_H
 
 namespace logger {
-static const bool WRITE_TO_FILE = false;
-static const std::string LOG_PATH = ".";
 
 class Logger
 {
