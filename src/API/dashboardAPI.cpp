@@ -15,6 +15,7 @@
 #include <iomanip>
 #include <memory>
 #include "../common/logger.h"
+#include "../common/Confparcer.h"
 // Callback function for cURL
 static size_t WriteCallback(void* contents, size_t size, size_t nmemb, std::string* response) {
     size_t totalSize = size * nmemb;
@@ -72,9 +73,11 @@ std::string DashboardAPI::callUserRegistered(const std::string& client_ip,
                           "\"IsMalicious\":" + (is_malicious ? "true" : "false") + ","
                           "\"Timestamp\":\"" + currentTime + "\""
                           "}";
-
-    std::cout << "Sending JSON: " << jsonData << std::endl;
-    std::cout << "URL: " << url << std::endl;
+    auto showRequests = Confparcer::SETTING<bool>("SHOW_REQ_LOG",true);
+    if(showRequests){
+    logger::Logger::info("Sending JSON: " + jsonData);
+    logger::Logger::info("URL: " + url);
+    }
     
     // Set headers
     struct curl_slist* headers = NULL;

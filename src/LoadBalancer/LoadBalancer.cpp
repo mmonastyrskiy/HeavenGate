@@ -73,7 +73,7 @@ void LoadBalancer::add_backend(std::shared_ptr<BackendNode> server_ptr) {
                                 {"weight", std::to_string(server_ptr->weight)}
         }
     );
-    logger::Logger::info("New host registered" + server_ptr->host + "Is honeypot:" + (server_ptr->is_honeypot ? "true" : "false"));
+    logger::Logger::info("New host registered IP: " + server_ptr->host +": " + std::to_string(server_ptr->port) + "Is honeypot: " + (server_ptr->is_honeypot ? "true" : "false"));
 }
 
 std::shared_ptr<BackendNode> LoadBalancer::select_backend(bool is_malicious, const std::string& client_ip) {
