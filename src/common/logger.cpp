@@ -7,7 +7,7 @@
 #include <fstream>
 #include <stdexcept>
 #include "../../include/colorText.h"
-#include "Confparcer.h"
+
 
 namespace logger {
 
