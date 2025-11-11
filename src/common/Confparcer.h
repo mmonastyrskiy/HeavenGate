@@ -35,7 +35,7 @@ std::string get(const std::string& key, int* error_code) const;
 
 template<typename T>
 static T SETTING(const std::string& sett, const T& default_value = T{}) {
-    std::string arg = Argparcer::the().get(sett);
+    std::string arg = Argparcer::Argparcer::the().get(sett);
     int e = 0;
     std::string conf = Confparcer::the().get(sett,&e);
     
