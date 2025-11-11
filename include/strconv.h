@@ -14,6 +14,8 @@
 #include <type_traits>
 #include <algorithm>
 
+namespace utils {
+
 template<typename T>
 T convertFromString(const std::string& str) {
     T result;
@@ -109,4 +111,5 @@ size_t convertFromString<size_t>(const std::string& str) {
     }
     
     return result;
+}
 }

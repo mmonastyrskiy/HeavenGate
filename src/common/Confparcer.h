@@ -52,7 +52,7 @@ static T SETTING(const std::string& sett, const T& default_value = T{}) {
     }
     
     try {
-        return convertFromString<T>(value);
+        return utils::convertFromString<T>(value);
     } catch (const std::invalid_argument& e) {
         logger::Logger::fatal("Conversion failed for setting '" + sett + "'. Value: '" + value + "', Expected type: " + typeid(T).name());
         return default_value;

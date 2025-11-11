@@ -41,7 +41,7 @@ void Logger::info(const std::string& msg) {
     auto p = color::print::info() << " [INFO] " << msg;
     p.println();
     
-    if(WRITE_TO_FILE) {
+    if(WRITE_TO_FILE()) {
         writelog(timestamp + " [INFO] " + msg);
     }
 }
@@ -52,7 +52,7 @@ void Logger::warn(const std::string& msg) {
     auto p = color::print::warning() <<" [WARN] " << msg;
     p.println();
     
-    if(WRITE_TO_FILE) {
+    if(WRITE_TO_FILE()) {
         writelog(timestamp + " [WARN] " + msg);
     }
 }
@@ -63,7 +63,7 @@ void Logger::err(const std::string& msg) {
     auto p = color::print::error() << " [ERROR] " + static_cast<std::string>( __FILE__) + static_cast<char>(__LINE__) << " " << msg;
     p.println();
     
-    if(WRITE_TO_FILE) {
+    if(WRITE_TO_FILE()) {
         writelog(timestamp + " [ERROR]  " + __FILE__ + static_cast<char>(__LINE__) + msg);
     }
 }
@@ -76,7 +76,7 @@ void Logger::fatal(const std::string& msg) {
 
     
     
-    if(WRITE_TO_FILE) {
+    if(WRITE_TO_FILE()) {
         writelog(timestamp + " [FATAL] " +  + __FILE__ + static_cast<char>(__LINE__) + msg);
     }
     std::runtime_error("Fatal called " +static_cast<std::string>( __FILE__) + static_cast<char>(__LINE__));
