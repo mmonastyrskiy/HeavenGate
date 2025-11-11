@@ -18,3 +18,5 @@
 #endif
 
 #define TODO() do{ logger::Logger::fatal("TODO REACHED");} while(0)
+#define VERIFY_NOT_REACHED() do{ logger::Logger::fatal("UNEXPECTED REACHED");} while(0)
+

@@ -74,6 +74,9 @@ inline AppComponent::AppComponent(AppComponentType comp_type)
             this->type = comp_type;
             break;
         }
+        default:
+        VERIFY_NOT_REACHED();
+
     }
 }
 
