@@ -34,5 +34,4 @@ AppManager& AppManager::the(){
     static AppManager instance;
     return instance;
 
-
 }

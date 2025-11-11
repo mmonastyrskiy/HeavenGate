@@ -16,6 +16,7 @@
 std::atomic<bool> running{true};
 
 int main() {
+    AppManager::the().init();
 
     std::cout << "Starting HeavenGate Load Balancer" << std::endl;
     try {
@@ -65,5 +66,6 @@ int main() {
     }
 
     std::cout << "✅ HeavenGate stopped" << std::endl;
+    AppManager::the().stop();
     return 0;
 }

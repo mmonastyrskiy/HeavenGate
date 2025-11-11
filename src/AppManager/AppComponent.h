@@ -97,6 +97,7 @@ inline bool AppComponent::run() {
 #else
     logger::Logger::err("run() not implemented for this platform");
     // TODO: Implement for other platforms
+    TODO();
     return false;
 #endif
 }
@@ -158,7 +159,8 @@ inline bool AppComponent::stop() {
     return true;
 #else
     logger::Logger::err("stop() not implemented for this platform");
-    // TODO: Implement for other platforms  
+    // TODO: Implement for other platforms
+    TODO();
     return false;
 #endif
 }
