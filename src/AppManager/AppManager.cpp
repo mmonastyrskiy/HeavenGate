@@ -10,6 +10,7 @@
 #include "AppManager.h"
 #include "AppComponent.h"
 #include "../common/logger.h"
+#include <algorithm>
 
 void AppManager::init(){
     logger::Logger::info("Initializing app");
