@@ -68,7 +68,8 @@ inline AppComponent::AppComponent(AppComponentType comp_type)
 {
     switch(comp_type) {
         case AppComponentType::HG_DASHBOARD: {
-            path /= "go-apps";;
+            path /= "go-apps/";
+            path /= "dashboard";
             name = "dashboard";
             this->type = comp_type;
             break;
@@ -163,7 +164,7 @@ inline bool AppComponent::run() {
     pid_t child_pid = fork();
     if (child_pid == 0) {
         // Дочерний процесс
-        execl(path.c_str(), name.c_str(), NULL);
+        execl(path.c_str(), "", NULL);
         // Если execl вернул управление - ошибка
         logger::Logger::err("Failed to run " + name + ": " + std::string(strerror(errno)));
         exit(EXIT_FAILURE);
