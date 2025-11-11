@@ -11,6 +11,16 @@
 
 namespace logger {
 
+        static bool WRITE_TO_FILE() {
+        static bool value = Confparcer::SETTING<bool>("ENABLE_LOG_FILE", false);
+        return value;
+    }
+    
+    static const std::string& LOG_PATH() {
+        static std::string path = Confparcer::SETTING<std::string>("LOG_PATH", ".");
+        return path;
+    }
+
 Logger::Logger() = default;
 
 std::string Logger::getCurrentTimeISO() {
