@@ -9,6 +9,7 @@
 #endif
 
 void AppManager::start_all() {
+    logger::Logger::info("Starting all components");
     // Создаем и запускаем все компоненты
     components.push_back(std::make_unique<AppComponent>(AppComponentType::HG_DASHBOARD));
     
@@ -23,6 +24,7 @@ void AppManager::start_all() {
 }
 
 void AppManager::stop_all() {
+    logger::Logger::info("Stopping all components");
     for (auto& comp : components) {
         comp->stop();
     }
