@@ -1,5 +1,6 @@
 #pragma once
 #include <string>
+#include "Confparcer.h"
 #ifndef LOGGER_H
 #define LOGGER_H
 
