@@ -11,10 +11,13 @@
 #include <iostream>
 #include "LoadBalancer/LoadBalancer.h"
 #include "DataBus/DataBus.h"
+#include "AppManager/AppManager.h"
 
 std::atomic<bool> running{true};
 
 int main() {
+    AppManager manager;
+    manager.start_all();
 
     std::cout << "Starting HeavenGate Load Balancer" << std::endl;
     try {
@@ -64,5 +67,6 @@ int main() {
     }
 
     std::cout << "✅ HeavenGate stopped" << std::endl;
+    manager.stop_all();
     return 0;
 }

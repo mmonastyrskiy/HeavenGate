@@ -83,5 +83,6 @@
         "xutility": "cpp",
         "source_location": "cpp",
         "fstream": "cpp"
-    }
+    },
+    "todo-tree.tree.showCountsInTree": true
 }
