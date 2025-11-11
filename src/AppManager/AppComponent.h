@@ -53,7 +53,7 @@ inline AppComponent::AppComponent(AppComponentType comp_type)
     switch(comp_type) {
         case AppComponentType::HG_DASHBOARD: {
             path /= "go-apps";
-            path += "HGDashboard";
+            path += "dashboard";
             name = "Dashboard";
             this->type = comp_type;
             break;
@@ -72,7 +72,7 @@ inline bool AppComponent::run() {
     pid_t pid = fork();
     if (pid == 0) {
         // Child process
-        execl(path.c_str(), "main", NULL);
+        execl(path.c_str(), "dashboard", NULL);
         logger::Logger::err("Failed to run " + name);
         return false;
     }
