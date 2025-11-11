@@ -164,7 +164,7 @@ inline bool AppComponent::run() {
     pid_t child_pid = fork();
     if (child_pid == 0) {
         // Дочерний процесс
-        execl(path.c_str(), "", NULL);
+        execl(path.c_str(), "", NULL); // FIXME: Приложение ориентируется на cwd, запуск из другой директории не запустит dashboard
         // Если execl вернул управление - ошибка
         logger::Logger::err("Failed to run " + name + ": " + std::string(strerror(errno)));
         exit(EXIT_FAILURE);
