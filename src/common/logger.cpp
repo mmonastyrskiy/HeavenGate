@@ -11,15 +11,6 @@
 
 namespace logger {
 
-    
-        static bool WRITE_TO_FILE = [](){
-        return Confparcer::SETTING<bool>("ENABLE_LOG_FILE", "0");
-    }();
-
-    static std::string LOG_PATH = [](){
-        return Confparcer::SETTING<std::string>("LOG_PATH", ".");
-    }();
-
 Logger::Logger() = default;
 
 std::string Logger::getCurrentTimeISO() {
@@ -90,7 +81,7 @@ void Logger::debug(const std::string& msg) {
 }
 
 void Logger::writelog(const std::string& towrite) {
-    std::ofstream file(LOG_PATH  + "/application.log", std::ios::app);
+    std::ofstream file(LOG_PATH()  + "/application.log", std::ios::app);
     if (file.is_open()) {
         file << towrite << std::endl;
         file.close();
