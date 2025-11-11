@@ -19,7 +19,9 @@ components.push_back(AppComponent(AppComponentType::HG_DASHBOARD));
 void AppManager::restart_component(const AppComponent& c){
     logger::Logger::info("Restarting " + c.name);
     AppComponentType t = c.type;
-components.erase(std::remove(components.begin(),components.end(),c));
+components.erase(std::remove_if(components.begin(),components.end(),
+[&c](const AppComponent& comp){return comp.name == c.name;}
+));
 components.push_back(AppComponent(t));
 }
 void AppManager::stop(){

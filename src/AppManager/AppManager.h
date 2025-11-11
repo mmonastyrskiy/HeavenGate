@@ -8,7 +8,6 @@
  */
 
 #pragma once
-#pragma once;
 #include <filesystem>
 #include "AppComponent.h"
 #include <vector>

@@ -19,6 +19,10 @@
 #include <signal.h>
 #include <cstring>
 #include "../common/generic.h"
+#if ISLINUX
+#include <unistd.h>
+#include <sys/wait.h>
+#endif
 
 enum AppComponentType {
     HG_DASHBOARD
@@ -32,8 +36,7 @@ private:
     int timeout_seconds = 10; // Added missing member variable
 
 #if ISLINUX
-#include <unistd.h>
-#include <sys/wait.h>
+
 
     bool run() {
         pid_t pid = fork();
