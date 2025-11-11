@@ -59,6 +59,7 @@ inline AppComponent::AppComponent(AppComponentType comp_type)
             break;
         }
     }
+    run();
 }
 
 inline AppComponent::~AppComponent()
