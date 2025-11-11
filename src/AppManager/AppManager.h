@@ -17,7 +17,7 @@ class AppManager
 
 public:
 int e {0};
-std::vector<AppComponent> components;
+std::vector<std::unique_ptr<AppComponent>> components;
 
 
 void init();

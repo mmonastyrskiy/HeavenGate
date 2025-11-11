@@ -47,8 +47,17 @@ public:
     AppComponentType type;
     std::string name;
 
+    // Конструкторы и операторы
     inline AppComponent(AppComponentType comp_type);
     inline ~AppComponent();
+    
+    // Запрещаем копирование
+    AppComponent(const AppComponent&) = delete;
+    AppComponent& operator=(const AppComponent&) = delete;
+    
+    // Разрешаем перемещение
+    inline AppComponent(AppComponent&& other) noexcept;
+    inline AppComponent& operator=(AppComponent&& other) noexcept;
 
     inline bool run();
     inline bool stop();
@@ -66,7 +75,47 @@ inline AppComponent::AppComponent(AppComponentType comp_type)
             break;
         }
     }
-    run();
+}
+
+// Конструктор перемещения
+inline AppComponent::AppComponent(AppComponent&& other) noexcept
+    : path(std::move(other.path))
+    , pid(other.pid)
+    , timeout_seconds(other.timeout_seconds)
+    , is_running(other.is_running.load())
+    , monitor_thread(std::move(other.monitor_thread))
+    , proc_pid(other.proc_pid)
+    , type(other.type)
+    , name(std::move(other.name))
+{
+    other.pid = 0;
+    other.proc_pid = 0;
+    other.is_running = false;
+}
+
+// Оператор перемещения
+inline AppComponent& AppComponent::operator=(AppComponent&& other) noexcept {
+    if (this != &other) {
+        // Останавливаем текущий процесс если запущен
+        stop();
+        if (monitor_thread && monitor_thread->joinable()) {
+            monitor_thread->join();
+        }
+        
+        path = std::move(other.path);
+        pid = other.pid;
+        timeout_seconds = other.timeout_seconds;
+        is_running = other.is_running.load();
+        monitor_thread = std::move(other.monitor_thread);
+        proc_pid = other.proc_pid;
+        type = other.type;
+        name = std::move(other.name);
+        
+        other.pid = 0;
+        other.proc_pid = 0;
+        other.is_running = false;
+    }
+    return *this;
 }
 
 inline AppComponent::~AppComponent()

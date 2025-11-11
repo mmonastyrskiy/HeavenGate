@@ -14,16 +14,16 @@
 
 void AppManager::init(){
     logger::Logger::info("Initializing app");
-components.push_back(AppComponent(AppComponentType::HG_DASHBOARD));
+components.push_back(std::make_unique<AppComponent>(AppComponentType::HG_DASHBOARD));
 }
 
 void AppManager::restart_component(const AppComponent& c){
     logger::Logger::info("Restarting " + c.name);
     AppComponentType t = c.type;
-components.erase(std::remove_if(components.begin(),components.end(),
-[&c](const AppComponent& comp){return comp.name == c.name;}
-));
-components.push_back(AppComponent(t));
+components.erase(std::remove_if(components.begin(), components.end(),
+    [&c](const std::unique_ptr<AppComponent>& comp){ return comp->name == c.name; }), 
+components.end());
+components.push_back(std::make_unique<AppComponent>(AppComponentType::HG_DASHBOARD));
 }
 void AppManager::stop(){
     logger::Logger::info("Stopping app! ");
