@@ -8,6 +8,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # Исходные файлы
 set(SRC_FILES
     main.cpp
+    AppManager/AppManager.cpp
     DataBus/DataBus.cpp
     LoadBalancer/LoadBalancer.cpp
     common/Argparcer.cpp
@@ -17,6 +18,8 @@ set(SRC_FILES
 )
 
 set(HEADER_FILES
+    AppManager/AppComponent.h
+    AppManager/AppManager.h
     DataBus/BusEvent.h
     DataBus/DataBusMetrics.h
     DataBus/subscriptionID.h
@@ -27,7 +30,9 @@ set(HEADER_FILES
     common/Argparcer.h
     common/logger.h
     common/Confparcer.h
+    common/generic.h
     API/dashboardAPI.h
+
 )
 
 add_custom_target(go-dashboard ALL
