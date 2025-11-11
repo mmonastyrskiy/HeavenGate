@@ -1,37 +1,15 @@
-/*
- * Filename: d:\HeavenGate\src\AppManager\AppManager.h
- * Path: d:\HeavenGate\src\AppManager
- * Created Date: Tuesday, November 11th 2025, 8:38:24 pm
- * Author: mmonastyrskiy
- * 
- * Copyright (c) 2025 Your Company
- */
-
-#pragma once
-#include <filesystem>
-#include "AppComponent.h"
+#include <string>
 #include <vector>
+#include <memory>
+#include "AppComponent.h"
 
-class AppManager
-{
-
-public:
-int e {0};
-std::vector<std::unique_ptr<AppComponent>> components;
-
-
-void init();
-void stop();
-void restart_component(const AppComponent& c);
-static AppManager& the();
-
-
+class AppManager {
 private:
-    AppManager() = default;
-    AppManager(const AppManager&) = delete;
-    AppManager& operator=(const AppManager&) = delete;
-    ~AppManager(){stop();}
-
+    std::vector<std::unique_ptr<AppComponent>> components;
+    
+public:
+    void start_all();
+    void stop_all();
+    void restart_component(const std::string& name);
+    bool is_component_running(const std::string& name);
 };
-
-

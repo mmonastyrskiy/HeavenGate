@@ -1,37 +1,53 @@
-/*
- * Filename: d:\HeavenGate\src\AppManager\AppManager.cpp
- * Path: d:\HeavenGate\src\AppManager
- * Created Date: Tuesday, November 11th 2025, 8:38:24 pm
- * Author: mmonastyrskiy
- * 
- * Copyright (c) 2025 Your Company
- */
-
 #include "AppManager.h"
 #include "AppComponent.h"
 #include "../common/logger.h"
-#include <algorithm>
+#include "../common/generic.h"
+#if ISLINUX
+#include <unistd.h>
+#else
+#include <windows.h>
+#endif
 
-void AppManager::init(){
-    logger::Logger::info("Initializing app");
-components.push_back(std::make_unique<AppComponent>(AppComponentType::HG_DASHBOARD));
+void AppManager::start_all() {
+    // Создаем и запускаем все компоненты
+    components.push_back(std::make_unique<AppComponent>(AppComponentType::HG_DASHBOARD));
+    
+    // Запускаем каждый компонент
+    for (auto& comp : components) {
+        if (comp->run()) {
+            logger::Logger::info("Компонент " + comp->name + " запущен");
+        } else {
+            logger::Logger::err("Не удалось запустить " + comp->name);
+        }
+    }
 }
 
-void AppManager::restart_component(const AppComponent& c){
-    logger::Logger::info("Restarting " + c.name);
-    AppComponentType t = c.type;
-components.erase(std::remove_if(components.begin(), components.end(),
-    [&c](const std::unique_ptr<AppComponent>& comp){ return comp->name == c.name; }), 
-components.end());
-components.push_back(std::make_unique<AppComponent>(AppComponentType::HG_DASHBOARD));
-}
-void AppManager::stop(){
-    logger::Logger::info("Stopping app! ");
-    components.clear();
+void AppManager::stop_all() {
+    for (auto& comp : components) {
+        comp->stop();
+    }
 }
 
-AppManager& AppManager::the(){
-    static AppManager instance;
-    return instance;
+void AppManager::restart_component(const std::string& name) {
+    for (auto& comp : components) {
+        if (comp->name == name) {
+            comp->stop();
+            #if ISLINUX
+            sleep(1); // Даем время на завершение
+            #else
+            Sleep(1);
+            #endif
+            comp->run();
+            break;
+        }
+    }
+}
 
+bool AppManager::is_component_running(const std::string& name) {
+    for (auto& comp : components) {
+        if (comp->name == name) {
+            return comp->isRunning();
+        }
+    }
+    return false;
 }
