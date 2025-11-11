@@ -1,23 +1,22 @@
 #pragma once
 #include <string>
 #include "Confparcer.h"
+
 #ifndef LOGGER_H
 #define LOGGER_H
 
-namespace logger{
+namespace logger {
 
- static inline bool WRITE_TO_FILE = [](){
-        return Confparcer::SETTING<bool>("ENABLE_LOG_FILE","0");
-    }();
-
-
- static inline std::string LOG_PATH = [](){
-        return Confparcer::SETTING<std::string>("LOG_PATH",".");
-    }();
 class Logger
 {
 public:
+    static inline bool WRITE_TO_FILE = [](){
+        return Confparcer::SETTING<bool>("ENABLE_LOG_FILE", "0");
+    }();
 
+    static inline std::string LOG_PATH = [](){
+        return Confparcer::SETTING<std::string>("LOG_PATH", ".");
+    }();
     Logger();
     static void info(const std::string&);
     static void warn(const std::string&);
