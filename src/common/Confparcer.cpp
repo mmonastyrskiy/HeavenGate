@@ -81,7 +81,7 @@ std::string Confparcer::get(const std::string& key, int* error_code = nullptr) c
         return value;
     } catch (const std::out_of_range&) {
 
-        logger::Logger::warn("Unable to fetch key " +  key + " from config");
+         //logger::Logger::warn("Unable to fetch key " +  key + " from config"); TODO: UNCOMMENT THIS WHEN WE WILL HAVE CONFIG FILE 
 
     e = ErrorCodes::NO_OPT_IN_CONFIG;
         return "";
