@@ -6,8 +6,16 @@
 #include <fstream>
 #include <stdexcept>
 #include "../../include/colorText.h"
+#include "Confparcer.h"
 
 namespace logger {
+        static inline bool WRITE_TO_FILE = [](){
+        return Confparcer::SETTING<bool>("ENABLE_LOG_FILE", "0");
+    }();
+
+    static inline std::string LOG_PATH = [](){
+        return Confparcer::SETTING<std::string>("LOG_PATH", ".");
+    }();
 
 Logger::Logger() = default;
 
