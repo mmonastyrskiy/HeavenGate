@@ -11,10 +11,19 @@
 #define DASHBOARDAPI_HPP
 
 #include <string>
+#include "../common/Confparcer.h"
 
 class DashboardAPI {
 public:
     int err{0};
+
+    
+    const char* HOST = [](){
+        return Confparcer::SETTING<const char*>("DASHBOARD_HOST", "127.0.0.1");
+    }();
+    const size_t PORT = [](){
+        return Confparcer::SETTING<size_t>("DASHBOARD_PORT",8081);
+    }();
 
     // Singleton instance
     static DashboardAPI& the();
@@ -28,7 +37,7 @@ public:
     DashboardAPI() = default;
     ~DashboardAPI() = default;
 
-    static constexpr const char* baseUrl = "http://127.0.0.1:8081/api";
+  std::string baseUrl = std::string("http://") + HOST + ":" + std::to_string(PORT) + "/api";
 
 private:
     // Prevent copying

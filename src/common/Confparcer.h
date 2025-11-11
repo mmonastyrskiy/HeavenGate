@@ -15,6 +15,7 @@
 #include "logger.h"
 #include "../../include/strconv.h"
 #include <stdexcept>
+#include "Confparcer.h"
 
 #define HG_ENVKEY "HG_BASE"
 
@@ -33,10 +34,10 @@ public:
 std::string get(const std::string& key, int* error_code) const;
 
 template<typename T>
-T SETTING(const std::string& sett, const T& default_value = T{}) {
-    std::string arg = Argparcer::Argparcer::the().get(sett,&e);
+static T SETTING(const std::string& sett, const T& default_value = T{}) {
+    std::string arg = Argparcer::Argparcer::the().get(sett);
     int e = 0;
-    std::string conf = Confparcer::the().get(sett);
+    std::string conf = Confparcer::the().get(sett,&e);
     
     std::string value;
     
@@ -51,7 +52,7 @@ T SETTING(const std::string& sett, const T& default_value = T{}) {
     }
     
     try {
-        return convertFromString<T>(value);
+        return utils::convertFromString<T>(value);
     } catch (const std::invalid_argument& e) {
         logger::Logger::fatal("Conversion failed for setting '" + sett + "'. Value: '" + value + "', Expected type: " + typeid(T).name());
         return default_value;

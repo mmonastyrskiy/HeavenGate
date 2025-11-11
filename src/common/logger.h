@@ -1,15 +1,15 @@
 #pragma once
 #include <string>
+
+
 #ifndef LOGGER_H
 #define LOGGER_H
 
-namespace logger{
-static const bool WRITE_TO_FILE = false;
-static const std::string LOG_PATH = ".";
+namespace logger {
+
 class Logger
 {
 public:
-
     Logger();
     static void info(const std::string&);
     static void warn(const std::string&);

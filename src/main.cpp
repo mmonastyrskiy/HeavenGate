@@ -11,12 +11,10 @@
 #include <iostream>
 #include "LoadBalancer/LoadBalancer.h"
 #include "DataBus/DataBus.h"
-#include "../include/colorText.h"
 
 std::atomic<bool> running{true};
 
 int main() {
-     color::print::red() << "Text" << color::print::println;
 
     std::cout << "Starting HeavenGate Load Balancer" << std::endl;
     try {
