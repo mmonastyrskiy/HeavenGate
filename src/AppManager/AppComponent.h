@@ -137,7 +137,7 @@ inline void AppComponent::monitor_process() {
     
     if (WIFEXITED(status)) {
         int exit_code = WEXITSTATUS(status);
-        if (exit_code != 0) {
+        if (exit_code != 0 || exit_code != 15 || exit_code != 9) {
             logger::Logger::err("Service " + name + " Exited with: " + std::to_string(exit_code) + " Code. Restarting!");
             // Перезапускаем в том же потоке мониторинга
             is_running = false;
