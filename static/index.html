@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HeavenGate Honeypot Dashboard</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="./styles/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+</head>
+<body>
+    <!-- Боковая панель -->
+    <div class="sidebar">
+        <div class="logo">
+            <h1>HeavenGate</h1>
+        </div>
+        <ul class="nav-links">
+            <li><a href="#" class="active" data-page="home">
+                <i class="fas fa-home"></i>
+                <span>Домашняя страница</span>
+            </a></li>
+            <li><a href="#" data-page="users">
+                <i class="fas fa-users"></i>
+                <span>Пользователи</span>
+            </a></li>
+            <li><a href="#" data-page="agents">
+                <i class="fas fa-server"></i>
+                <span>Агенты</span>
+            </a></li>
+            <li><a href="#" data-page="rules">
+                <i class="fas fa-shield-alt"></i>
+                <span>Правила</span>
+            </a></li>
+            <li><a href="#" data-page="settings">
+                <i class="fas fa-cog"></i>
+                <span>Настройки</span>
+            </a></li>
+        </ul>
+    </div>
+
+    <!-- Заголовок -->
+    <div class="header">
+        <div class="header-left">
+            <h2 id="page-title">Главная</h2>
+        </div>
+        <div class="header-right">
+            <div class="notification-icon dropdown" id="notification-dropdown">
+                <i class="fas fa-bell"></i>
+                <span class="notification-badge">3</span>
+                <div class="dropdown-content" id="notification-menu">
+                    <div class="dropdown-header">Уведомления</div>
+                    <a href="#" class="dropdown-item">
+                        <div>Обнаружена подозрительная активность</div>
+                        <small>2 минуты назад</small>
+                    </a>
+                    <a href="#" class="dropdown-item">
+                        <div>Новый пользователь зарегистрирован</div>
+                        <small>5 минут назад</small>
+                    </a>
+                    <a href="#" class="dropdown-item">
+                        <div>Обновление системы завершено</div>
+                        <small>Вчера</small>
+                    </a>
+                </div>
+            </div>
+            <div class="user-profile dropdown" id="user-dropdown">
+                <div class="user-avatar">A</div>
+                <span>Администратор</span>
+                <div class="dropdown-content" id="user-menu">
+                    <a href="#" class="dropdown-item"><i class="fas fa-user"></i> Профиль</a>
+                    <a href="#" class="dropdown-item"><i class="fas fa-cog"></i> Настройки</a>
+                    <a href="#" class="dropdown-item"><i class="fas fa-sign-out-alt"></i> Выйти</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Основной контент -->
+    <div class="main-content">
+        <!-- Статистические карточки -->
+        <div class="stats-cards">
+            <div class="stat-card">
+                <div class="stat-icon" style="background-color: var(--primary-color);">
+                    <i class="fas fa-shield-alt"></i>
+                </div>
+                <div class="stat-info">
+                    <h3 id="total-requests">0</h3>
+                    <p>Всего клиентов</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon" style="background-color: var(--success-color);">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <div class="stat-info">
+                    <h3 id="legit-requests">0</h3>
+                    <p>Легитимные клиенты</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon" style="background-color: var(--danger-color);">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                <div class="stat-info">
+                    <h3 id="malicious-requests">0</h3>
+                    <p>Вредоносные клиенты</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon" style="background-color: var(--warning-color);">
+                    <i class="fas fa-clock"></i>
+                </div>
+                <div class="stat-info">
+                    <h3 id="active-agents">0</h3>
+                    <p>Активные сервера</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon" style="background-color: var(--warning-color);">
+                    <i class="fas fa-clock"></i>
+                </div>
+                <div class="stat-info">
+                    <h3 id="active-agents">0</h3>
+                    <p>Активные ловушки</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- График активности -->
+        <div class="chart-container">
+            <h3>Активность запросов</h3>
+            <canvas id="activity-chart"></canvas>
+        </div>
+
+        <!-- Таблица последних запросов -->
+        <div class="requests-table">
+            <h3 style="padding: 20px 20px 0;">Последние запросы</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Статус</th>
+                        <th>IP-адрес</th>
+                        <th>Путь</th>
+                        <th>Время получения</th>
+                    </tr>
+                </thead>
+                <tbody id="requests-table-body">
+                    <!-- Данные будут заполнены через JavaScript -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script src="./js/dashboard.js"></script>
+</body>
+</html>

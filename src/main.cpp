@@ -9,17 +9,28 @@
 
 
 #include <iostream>
+#include <csignal>
 #include "LoadBalancer/LoadBalancer.h"
 #include "DataBus/DataBus.h"
 #include "AppManager/AppManager.h"
 
 std::atomic<bool> running{true};
 
+void signalHandler(int sig) {
+    if (sig == SIGINT) {
+        running = false;
+        std::cout << "\n🛑 Received SIGINT, shutting down..." << std::endl;
+    }
+}
+
+
+
 int main() {
     AppManager manager;
     manager.start_all();
 
     std::cout << "Starting HeavenGate Load Balancer" << std::endl;
+    std::signal(SIGINT, signalHandler);
     try {
         // Создаем балансировщик
         LoadBalancer balancer(RoutingStrategy::ROUND_ROBIN);
@@ -57,6 +68,11 @@ int main() {
 
             request_count++;
             std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        }
+
+        while(running){
+             std::this_thread::sleep_for(std::chrono::seconds(1));
+
         }
 
         balancer.stop();
