@@ -57,10 +57,10 @@ func main() {
 	http.HandleFunc("/events", handleSSE)
 
 	// API для приема запросов от балансировщика
-	http.HandleFunc("/api/user_registered", handleBalancerRequest)
+	http.HandleFunc("/api/req_registered", handleBalancerRequest)
 
 	// API для получения истории запросов
-	http.HandleFunc("/user_registered", getRequestsHistory)
+	http.HandleFunc("/api/user_registered", getRequestsHistory)
 
 	// API для обновления информации об агентах
 	http.HandleFunc("/api/agents", handleAgentsUpdate)

@@ -62,7 +62,7 @@ std::string DashboardAPI::callUserRegistered(const std::string& client_ip,
     }
     
     // Form the full URL - use the class member with proper scope
-    std::string url = DashboardAPI::baseUrl + "/user_registered";
+    std::string url = DashboardAPI::baseUrl + "/req_registered";
 
     std::string currentTime = getCurrentTimeISO();
     
