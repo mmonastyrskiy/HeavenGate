@@ -151,7 +151,10 @@ inline void AppComponent::monitor_process() {
         }
     } else if (WIFSIGNALED(status)) {
         int signal = WTERMSIG(status);
+        if(signal != 15 || signal != 9){
         LOG_ERROR("Service " + name + " Terminated by signal: " + std::to_string(signal));
+        }
+        else{LOG_INFO("Service " + name + " Terminated by signal: " + std::to_string(signal));}
         is_running = false;
     }
 #endif
