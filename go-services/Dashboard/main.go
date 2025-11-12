@@ -162,6 +162,39 @@ func prepareStats() map[string]interface{} {
 	}
 }
 
+func getRequestsHistory(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "GET" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	mu.Lock()
+	defer mu.Unlock()
+
+	// Подготавливаем полные данные для ответа
+	legitClients := 0
+	maliciousClients := 0
+	
+	for _, client := range clients {
+		if client.IsMalicious {
+			maliciousClients++
+		} else {
+			legitClients++
+		}
+	}
+
+	responseData := map[string]interface{}{
+		"requests":  requests,
+		"total":     len(requests),
+		"legitClients": legitClients,
+		"maliciousClients": maliciousClients,
+		"agents":    agents,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(responseData)
+}
+
 func handleAgentsUpdate(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -187,6 +220,123 @@ func handleAgentsUpdate(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{"status": "updated"})
 }
 
-// Остальные функции (getRequestsHistory, handleSSE, broadcastToSSEClients) 
-// остаются аналогичными предыдущей реализации, но обновляются для работы 
-// с новой структурой данных
+func handleSSE(w http.ResponseWriter, r *http.Request) {
+	// Устанавливаем заголовки для SSE
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Headers", "Cache-Control")
+
+	// Создаем флашер для принудительной отправки данных
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		http.Error(w, "SSE not supported", http.StatusInternalServerError)
+		return
+	}
+
+	// Создаем нового клиента
+	client := &SSEClient{
+		ID:      fmt.Sprintf("%d", time.Now().UnixNano()),
+		Channel: make(chan []byte, 10), // Буферизованный канал
+	}
+
+	// Регистрируем клиента
+	sseMutex.Lock()
+	sseClients[client] = true
+	sseMutex.Unlock()
+
+	log.Printf("SSE client connected: %s, total clients: %d", client.ID, len(sseClients))
+
+	// Уведомляем о подключении
+	fmt.Fprintf(w, "event: connected\ndata: {\"clientId\": \"%s\"}\n\n", client.ID)
+	flusher.Flush()
+
+	// Отправляем начальные данные
+	mu.Lock()
+	
+	legitClients := 0
+	maliciousClients := 0
+	for _, client := range clients {
+		if client.IsMalicious {
+			maliciousClients++
+		} else {
+			legitClients++
+		}
+	}
+	
+	initialData := map[string]interface{}{
+		"type": "initial",
+		"data": map[string]interface{}{
+			"requests":        requests,
+			"total":           len(requests),
+			"legitClients":    legitClients,
+			"maliciousClients": maliciousClients,
+			"agents":          agents,
+		},
+	}
+	mu.Unlock()
+
+	initialDataJSON, _ := json.Marshal(initialData)
+	fmt.Fprintf(w, "data: %s\n\n", string(initialDataJSON))
+	flusher.Flush()
+
+	// Обрабатываем сообщения для этого клиента
+	for {
+		select {
+		case message := <-client.Channel:
+			// Отправляем сообщение клиенту
+			_, err := fmt.Fprintf(w, "data: %s\n\n", string(message))
+			if err != nil {
+				// Клиент отключился
+				break
+			}
+			flusher.Flush()
+
+		case <-r.Context().Done():
+			// Клиент отключился
+			sseMutex.Lock()
+			delete(sseClients, client)
+			sseMutex.Unlock()
+			close(client.Channel)
+			log.Printf("SSE client disconnected: %s, total clients: %d", client.ID, len(sseClients))
+			return
+
+		case <-time.After(30 * time.Second):
+			// Отправляем ping для поддержания соединения
+			pingData := map[string]interface{}{
+				"type":    "ping",
+				"message": "keep-alive",
+			}
+			pingJSON, _ := json.Marshal(pingData)
+			fmt.Fprintf(w, "data: %s\n\n", string(pingJSON))
+			flusher.Flush()
+		}
+	}
+}
+
+func broadcastToSSEClients(eventType string, data interface{}) {
+	message := map[string]interface{}{
+		"type": eventType,
+		"data": data,
+	}
+
+	messageJSON, err := json.Marshal(message)
+	if err != nil {
+		log.Printf("Error marshaling SSE message: %v", err)
+		return
+	}
+
+	sseMutex.Lock()
+	defer sseMutex.Unlock()
+
+	for client := range sseClients {
+		select {
+		case client.Channel <- messageJSON:
+			// Сообщение отправлено
+		default:
+			// Канал заполнен, пропускаем этого клиента
+			log.Printf("SSE client channel full, skipping: %s", client.ID)
+		}
+	}
+}
