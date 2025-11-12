@@ -86,51 +86,53 @@
                 </div>
                 <div class="stat-info">
                     <h3 id="total-requests">0</h3>
-                    <p>Всего клиентов</p>
+                    <p>Всего запросов</p>
                 </div>
             </div>
             <div class="stat-card">
                 <div class="stat-icon" style="background-color: var(--success-color);">
-                    <i class="fas fa-check-circle"></i>
+                    <i class="fas fa-user-check"></i>
                 </div>
                 <div class="stat-info">
-                    <h3 id="legit-requests">0</h3>
+                    <h3 id="legit-clients">0</h3>
                     <p>Легитимные клиенты</p>
                 </div>
             </div>
             <div class="stat-card">
                 <div class="stat-icon" style="background-color: var(--danger-color);">
-                    <i class="fas fa-exclamation-triangle"></i>
+                    <i class="fas fa-user-slash"></i>
                 </div>
                 <div class="stat-info">
-                    <h3 id="malicious-requests">0</h3>
+                    <h3 id="malicious-clients">0</h3>
                     <p>Вредоносные клиенты</p>
                 </div>
             </div>
             <div class="stat-card">
                 <div class="stat-icon" style="background-color: var(--warning-color);">
-                    <i class="fas fa-clock"></i>
+                    <i class="fas fa-server"></i>
                 </div>
                 <div class="stat-info">
-                    <h3 id="active-agents">0</h3>
-                    <p>Активные сервера</p>
+                    <h3 id="real-servers">0</h3>
+                    <p>Реальные серверы</p>
                 </div>
             </div>
             <div class="stat-card">
-                <div class="stat-icon" style="background-color: var(--warning-color);">
-                    <i class="fas fa-clock"></i>
+                <div class="stat-icon" style="background-color: var(--info-color);">
+                    <i class="fas fa-bug"></i>
                 </div>
                 <div class="stat-info">
-                    <h3 id="active-agents">0</h3>
-                    <p>Активные ловушки</p>
+                    <h3 id="honeypots">0</h3>
+                    <p>Ловушки</p>
                 </div>
             </div>
         </div>
 
         <!-- График активности -->
         <div class="chart-container">
-            <h3>Активность запросов</h3>
-            <canvas id="activity-chart"></canvas>
+            <h3>Активность клиентов (последние 24 часа)</h3>
+            <div class="chart-wrapper">
+                <canvas id="activity-chart"></canvas>
+            </div>
         </div>
 
         <!-- Таблица последних запросов -->
@@ -151,7 +153,6 @@
             </table>
         </div>
     </div>
-
     <script src="./js/dashboard.js"></script>
 </body>
 </html>
