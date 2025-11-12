@@ -67,6 +67,6 @@ int main() {
     }
 
     std::cout << "✅ HeavenGate stopped" << std::endl;
-    manager.stop_all();
+    //manager.stop_all();
     return 0;
 }
