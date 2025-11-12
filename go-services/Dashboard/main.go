@@ -51,7 +51,7 @@ func main() {
 	fmt.Println("--------------------------------------------------------")
 
 	// Обслуживание статических файлов
-	http.Handle("/", http.FileServer(http.Dir("./static")))
+	http.Handle("/", http.FileServer(http.Dir("../../static")))
 
 	// SSE endpoint для real-time обновлений
 	http.HandleFunc("/events", handleSSE)

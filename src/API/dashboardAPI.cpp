@@ -42,7 +42,7 @@ DashboardAPI& DashboardAPI::the() {
     return instance;
 }
 
-std::string DashboardAPI::callAgentChange(const int& real_size, const int& honey_size, int* err = nullptr){
+std::string DashboardAPI::callAgentChange(const int& real_size, const int& honey_size, int* err){
 
     CURL* curl;
     CURLcode res;
