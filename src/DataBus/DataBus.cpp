@@ -26,13 +26,13 @@ void DataBus::publish(BusEventType type, const std::string& source, const nlohma
     {
         std::lock_guard<std::mutex> lock(events_mutex_);
         events_queue_.push(event);
-        logger::Logger::info("Event pushed to the bus by " + source);
+        LOG_INFO("Event pushed to the bus by " + source);
         metrics_.queue_size = events_queue_.size();
 
         if(metrics_.queue_size >= MAX_QUEUE_SIZE){
             events_queue_.pop();
             metrics_.queue_overflow++;
-            logger::Logger::warn("Queue overflow");
+            LOG_WARN("Queue overflow");
         }
     }
     events_cv_.notify_one();
@@ -91,7 +91,7 @@ nlohmann::json DataBus::request(BusEventType type, const nlohmann::json& data,
                                     if (running_.exchange(true)) return;
 
                                     worker_thread_ = std::thread(&DataBus::process_events, this);
-                                    logger::Logger::info("Bus worker started");
+                                    LOG_INFO("Bus worker started");
                                 }
 
                                 void DataBus::stop() {
@@ -102,7 +102,7 @@ nlohmann::json DataBus::request(BusEventType type, const nlohmann::json& data,
                                     if (worker_thread_.joinable()) {
                                         worker_thread_.join();
                                     }
-                                    logger::Logger::info("Bus worker stopped");
+                                    LOG_INFO("Bus worker stopped");
                                 }
 
                                 DataBusMetricsSnapshot DataBus::get_metrics() const {
@@ -177,7 +177,7 @@ nlohmann::json DataBus::request(BusEventType type, const nlohmann::json& data,
                                                 subscriber.callback(event);
                                             } catch (const std::exception& e) {
                                                 metrics_.handler_errors++;
-                                                logger::Logger::warn(static_cast< const std::string&>(e.what()));
+                                                LOG_WARN(static_cast< const std::string&>(e.what()));
                                             }
                                         }
                                     }

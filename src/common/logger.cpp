@@ -59,7 +59,7 @@ void Logger::warn(const std::string& msg) {
     }
 }
 
-void Logger::err(const std::string& msg,const char * file=__FILE__, int line=__LINE__) {
+void Logger::err(const std::string& msg,const char * file, int line) {
     std::string timestamp = getCurrentTimeISO();
     std::cout << timestamp;
     auto p = color::print::error() << " [ERROR] " + static_cast<std::string>(file) + std::to_string(__LINE__) << " " << msg;
@@ -70,7 +70,7 @@ void Logger::err(const std::string& msg,const char * file=__FILE__, int line=__L
     }
 }
 
-void Logger::fatal(const std::string& msg,const char * file=__FILE__, int line=__LINE__) {
+void Logger::fatal(const std::string& msg,const char * file, int line) {
     std::string timestamp = getCurrentTimeISO();
     std::cout << timestamp;
     auto p = color::print::magenta().bold() << " [FATAL] " + static_cast<std::string>(file) + std::to_string(__LINE__) <<" "<< msg;
@@ -85,7 +85,7 @@ void Logger::fatal(const std::string& msg,const char * file=__FILE__, int line=_
 
 }
 
-void Logger::debug(const std::string& msg,const char * file=__FILE__, int line=__LINE__) {
+void Logger::debug(const std::string& msg,const char * file, int line) {
     std::string timestamp = getCurrentTimeISO();
     std::cout << timestamp;
     auto p = color::print::green().bold() << " [DEBUG] " + static_cast<std::string>(file) + std::to_string(__LINE__) << " " << msg;

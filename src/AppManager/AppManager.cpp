@@ -9,22 +9,22 @@
 #endif
 
 void AppManager::start_all() {
-    logger::Logger::info("Starting all components");
+    LOG_INFO("Starting all components");
     // Создаем и запускаем все компоненты
     components.push_back(std::make_unique<AppComponent>(AppComponentType::HG_DASHBOARD));
     
     // Запускаем каждый компонент
     for (auto& comp : components) {
         if (comp->run()) {
-            logger::Logger::info("Компонент " + comp->name + " запущен");
+            LOG_INFO("Компонент " + comp->name + " запущен");
         } else {
-            logger::Logger::err("Не удалось запустить " + comp->name);
+            LOG_ERROR("Не удалось запустить " + comp->name);
         }
     }
 }
 
 void AppManager::stop_all() {
-    logger::Logger::info("Stopping all components");
+    LOG_INFO("Stopping all components");
     for (auto& comp : components) {
         comp->stop();
     }

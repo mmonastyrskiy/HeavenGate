@@ -141,17 +141,17 @@ inline void AppComponent::monitor_process() {
     if (WIFEXITED(status)) {
         int exit_code = WEXITSTATUS(status);
         if (exit_code != 0 || exit_code != 15 || exit_code != 9) {
-            logger::Logger::err("Service " + name + " Exited with: " + std::to_string(exit_code) + " Code. Restarting!");
+            LOG_ERROR("Service " + name + " Exited with: " + std::to_string(exit_code) + " Code. Restarting!");
             // Перезапускаем в том же потоке мониторинга
             is_running = false;
             run();
         } else {
-            logger::Logger::info("Service " + name + " Stopped gracefully.");
+            LOG_INFO("Service " + name + " Stopped gracefully.");
             is_running = false;
         }
     } else if (WIFSIGNALED(status)) {
         int signal = WTERMSIG(status);
-        logger::Logger::err("Service " + name + " Terminated by signal: " + std::to_string(signal));
+        LOG_ERROR("Service " + name + " Terminated by signal: " + std::to_string(signal));
         is_running = false;
     }
 #endif
@@ -160,7 +160,7 @@ inline void AppComponent::monitor_process() {
 inline bool AppComponent::run() {
 #if ISLINUX
     if (is_running.load()) {
-        logger::Logger::warn("Service " + name + " is already running");
+        LOG_WARN("Service " + name + " is already running");
         return true;
     }
 
@@ -169,7 +169,7 @@ inline bool AppComponent::run() {
         // Дочерний процесс
         execl(path.c_str(), "", NULL); // FIXME: Приложение ориентируется на cwd, запуск из другой директории не запустит dashboard
         // Если execl вернул управление - ошибка
-        logger::Logger::err("Failed to run " + name + ": " + std::string(strerror(errno)));
+        LOG_ERROR("Failed to run " + name + ": " + std::string(strerror(errno)));
         exit(EXIT_FAILURE);
     }
     else if (child_pid > 0) {
@@ -178,7 +178,7 @@ inline bool AppComponent::run() {
         this->pid = child_pid;
         is_running = true;
         
-        logger::Logger::info("Service " + name + " started with PID: " + std::to_string(child_pid));
+        LOG_INFO("Service " + name + " started with PID: " + std::to_string(child_pid));
         
         // Запускаем мониторинг в отдельном потоке
         if (monitor_thread && monitor_thread->joinable()) {
@@ -189,11 +189,11 @@ inline bool AppComponent::run() {
         return true;
     }
     else {
-        logger::Logger::err("Failed to run " + name + " - Fork failed: " + std::string(strerror(errno)));
+        LOG_ERROR("Failed to run " + name + " - Fork failed: " + std::string(strerror(errno)));
         return false;
     }
 #else
-    logger::Logger::err("run() not implemented for this platform");
+    LOG_ERROR("run() not implemented for this platform");
     // TODO: Implement for other platforms
     TODO();
     return false;
@@ -203,27 +203,27 @@ inline bool AppComponent::run() {
 inline bool AppComponent::stop() {
 #if ISLINUX
     if (!is_running.load() || pid == 0) {
-        logger::Logger::warn("Process " + name + " not running");
+        LOG_WARN("Process " + name + " not running");
         return true;
     }
 
     // Check if process exists
     if (kill(pid, 0) != 0) {
         if (errno == ESRCH) {
-            logger::Logger::warn("Process " + name + "[ " + std::to_string(pid) + " ]" + " Not found! Unable to stop!");
+            LOG_WARN("Process " + name + "[ " + std::to_string(pid) + " ]" + " Not found! Unable to stop!");
             is_running = false;
             pid = 0;
             proc_pid = 0;
         } else {
-            logger::Logger::warn("Cannot access process of " + name + "[" + std::to_string(pid) + "]" + " Reason: " + strerror(errno));
+            LOG_WARN("Cannot access process of " + name + "[" + std::to_string(pid) + "]" + " Reason: " + strerror(errno));
         }
         return false;
     }
 
     // Send SIGTERM for graceful shutdown
-    logger::Logger::info("Sending SIGTERM to process " + name + "[" + std::to_string(pid) + "]");
+    LOG_INFO("Sending SIGTERM to process " + name + "[" + std::to_string(pid) + "]");
     if (kill(pid, SIGTERM) != 0) {
-        logger::Logger::warn("Failed to send SIGTERM: " + std::string(strerror(errno)));
+        LOG_WARN("Failed to send SIGTERM: " + std::string(strerror(errno)));
         return false;
     }
 
@@ -232,7 +232,7 @@ inline bool AppComponent::stop() {
         sleep(1);
         if (kill(pid, 0) != 0) {
             if (errno == ESRCH) {
-                logger::Logger::info("Process " + name + "[" + std::to_string(pid) + "]" + " terminated gracefully.");
+                LOG_INFO("Process " + name + "[" + std::to_string(pid) + "]" + " terminated gracefully.");
                 is_running = false;
                 pid = 0;
                 proc_pid = 0;
@@ -242,26 +242,26 @@ inline bool AppComponent::stop() {
     }
 
     // Force kill if still running
-    logger::Logger::warn("Process " + name + "[" + std::to_string(pid) + "]" + " did not terminate, sending SIGKILL");
+    LOG_WARN("Process " + name + "[" + std::to_string(pid) + "]" + " did not terminate, sending SIGKILL");
     if (kill(pid, SIGKILL) != 0) {
-        logger::Logger::err("Failed to send SIGKILL: " + std::string(strerror(errno)));
+        LOG_ERROR("Failed to send SIGKILL: " + std::string(strerror(errno)));
         return false;
     }
     
     sleep(1); // Give time for SIGKILL to process
     
     if (kill(pid, 0) == 0) {
-        logger::Logger::err("Process " + name + "[" + std::to_string(pid) + "]" + " still running after SIGKILL!");
+        LOG_ERROR("Process " + name + "[" + std::to_string(pid) + "]" + " still running after SIGKILL!");
         return false;
     }
     
-    logger::Logger::info("Process " + name + "[" + std::to_string(pid) + "]" + " killed successfully.");
+    LOG_INFO("Process " + name + "[" + std::to_string(pid) + "]" + " killed successfully.");
     is_running = false;
     pid = 0;
     proc_pid = 0;
     return true;
 #else
-    logger::Logger::err("stop() not implemented for this platform");
+    LOG_ERROR("stop() not implemented for this platform");
     // TODO: Implement for other platforms
     TODO();
     return false;

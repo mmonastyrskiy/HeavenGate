@@ -25,7 +25,7 @@ int Confparcer::parce() {
     std::ifstream cfile(path); 
     
     if (!cfile.is_open()) {
-        logger::Logger::fatal("Failed to open config file, please check the path");
+        LOG_FATAL("Failed to open config file, please check the path");
         return ErrorCodes::CONFIG_NOT_OPENED;
     }
     
@@ -46,7 +46,7 @@ int Confparcer::parce() {
         // Find equals sign
         size_t div = line.find('=');
         if (div == std::string::npos) {
-            logger::Logger::warn("Illegal line in config at line " + std::to_string(line_num));
+            LOG_WARN("Illegal line in config at line " + std::to_string(line_num));
             line_num++;
             continue;
         }
@@ -81,7 +81,7 @@ std::string Confparcer::get(const std::string& key, int* error_code = nullptr) c
         return value;
     } catch (const std::out_of_range&) {
 
-         logger::Logger::warn("Unable to fetch key " +  key + " from config");
+         LOG_WARN("Unable to fetch key " +  key + " from config");
 
     e = ErrorCodes::NO_OPT_IN_CONFIG;
         return "";
