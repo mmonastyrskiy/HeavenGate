@@ -1,37 +1,41 @@
+        // SSE соединение
+        let eventSource;
+        let reconnectTimeout;
+        const maxReconnectDelay = 10000;
 
-        // Инициализация графика
+        // Инициализация графика с фиксированными осями
         const ctx = document.getElementById('activity-chart').getContext('2d');
         const activityChart = new Chart(ctx, {
             type: 'line',
             data: {
-                labels: [], // Временные метки
+                labels: [],
                 datasets: [
                     {
-                        label: 'Легитимные запросы',
+                        label: 'Легитимные клиенты',
                         data: [],
                         borderColor: '#2ecc71',
                         backgroundColor: 'rgba(46, 204, 113, 0.1)',
                         tension: 0.4,
-                        fill: true
+                        fill: true,
+                        borderWidth: 2
                     },
                     {
-                        label: 'Вредоносные запросы',
+                        label: 'Вредоносные клиенты',
                         data: [],
                         borderColor: '#e74c3c',
                         backgroundColor: 'rgba(231, 76, 60, 0.1)',
                         tension: 0.4,
-                        fill: true
+                        fill: true,
+                        borderWidth: 2
                     }
                 ]
             },
             options: {
                 responsive: true,
+                maintainAspectRatio: false,
                 plugins: {
                     legend: {
                         position: 'top',
-                    },
-                    title: {
-                        display: false
                     }
                 },
                 scales: {
@@ -40,141 +44,350 @@
                         title: {
                             display: true,
                             text: 'Время'
+                        },
+                        grid: {
+                            display: true
                         }
                     },
                     y: {
                         display: true,
                         title: {
                             display: true,
-                            text: 'Количество запросов'
+                            text: 'Количество клиентов'
                         },
-                        beginAtZero: true
+                        beginAtZero: true,
+                        suggestedMin: 0,
+                        suggestedMax: 10, // Фиксированный максимум для начала
+                        grid: {
+                            display: true
+                        },
+                        ticks: {
+                            stepSize: 1 // Целые числа для количества клиентов
+                        }
+                    }
+                },
+                animation: {
+                    duration: 0 // Отключаем анимацию для производительности
+                },
+                elements: {
+                    point: {
+                        radius: 0 // Убираем точки для чистоты
                     }
                 }
             }
         });
 
-        // Массив для хранения запросов
+        // Массив для хранения запросов и клиентов
         let requests = [];
+        let clients = new Map(); // IP -> {isMalicious, lastSeen, requestCount}
+        let agents = {
+            realServers: 3, // Пример начальных данных
+            honeypots: 5
+        };
 
-        // Функция для обновления статистики
-        function updateStats() {
-            const totalRequests = requests.length;
-            const legitRequests = requests.filter(req => !req.IsMalicious).length;
-            const maliciousRequests = requests.filter(req => req.IsMalicious).length;
+        // Данные для графика (фиксированные интервалы)
+        let chartData = {
+            labels: generateTimeLabels(),
+            legit: Array(24).fill(0),
+            malicious: Array(24).fill(0)
+        };
+
+        // Генерация временных меток для последних 24 часов
+        function generateTimeLabels() {
+            const labels = [];
+            const now = new Date();
             
-            document.getElementById('total-requests').textContent = totalRequests;
-            document.getElementById('legit-requests').textContent = legitRequests;
-            document.getElementById('malicious-requests').textContent = maliciousRequests;
+            for (let i = 23; i >= 0; i--) {
+                const time = new Date(now);
+                time.setHours(now.getHours() - i);
+                labels.push(time.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'}));
+            }
             
-            // Обновление таблицы запросов
+            return labels;
+        }
+
+        // Функция подключения SSE
+        function connectSSE() {
+            try {
+                eventSource = new EventSource('/events');
+                
+                eventSource.onopen = function(event) {
+                    console.log('SSE connection opened');
+                    updateConnectionStatus(true);
+                    clearTimeout(reconnectTimeout);
+                };
+
+                eventSource.onmessage = function(event) {
+                    try {
+                        const data = JSON.parse(event.data);
+                        handleSSEMessage(data);
+                    } catch (error) {
+                        console.error('Error parsing SSE message:', error);
+                    }
+                };
+
+                eventSource.addEventListener('connected', function(event) {
+                    const data = JSON.parse(event.data);
+                    console.log('SSE connected with client ID:', data.clientId);
+                });
+
+                eventSource.onerror = function(event) {
+                    console.error('SSE error:', event);
+                    updateConnectionStatus(false);
+                    
+                    if (eventSource) {
+                        eventSource.close();
+                    }
+                    
+                    attemptReconnect();
+                };
+
+            } catch (error) {
+                console.error('Error creating SSE connection:', error);
+                attemptReconnect();
+            }
+        }
+
+        // Попытка переподключения
+        function attemptReconnect(delay = 1000) {
+            console.log(`Attempting to reconnect in ${delay}ms...`);
+            
+            clearTimeout(reconnectTimeout);
+            reconnectTimeout = setTimeout(() => {
+                connectSSE();
+            }, Math.min(delay * 2, maxReconnectDelay));
+        }
+
+        // Обработчик сообщений SSE
+        function handleSSEMessage(data) {
+            switch (data.type) {
+                case 'initial':
+                    console.log('Received initial data');
+                    requests = data.data.requests || [];
+                    agents = data.data.agents || agents;
+                    updateClientsFromRequests();
+                    updateAllStats();
+                    updateChartData();
+                    updateRequestsTable();
+                    break;
+                    
+                case 'new_request':
+                    console.log('New request received:', data.data.request);
+                    // Добавляем новый запрос
+                    requests.push(data.data.request);
+                    
+                    // Обновляем информацию о клиентах
+                    updateClientInfo(data.data.request);
+                    
+                    // Обновляем статистику
+                    updateAllStats();
+                    
+                    // Обновляем таблицу
+                    addNewRequestToTable(data.data.request);
+                    
+                    // Обновляем график
+                    updateChartWithNewRequest(data.data.request);
+                    break;
+                    
+                case 'agents_update':
+                    console.log('Agents update received:', data.data);
+                    agents = data.data;
+                    updateAgentsStats();
+                    break;
+                    
+                case 'ping':
+                    break;
+                    
+                default:
+                    console.log('Unknown message type:', data.type);
+            }
+        }
+
+        // Обновление информации о клиентах из всех запросов
+        function updateClientsFromRequests() {
+            clients.clear();
+            requests.forEach(request => {
+                updateClientInfo(request);
+            });
+        }
+
+        // Обновление информации о конкретном клиенте
+        function updateClientInfo(request) {
+            const clientIP = request.clientIP;
+            const now = new Date();
+            
+            if (!clients.has(clientIP)) {
+                clients.set(clientIP, {
+                    isMalicious: request.isMalicious,
+                    firstSeen: now,
+                    lastSeen: now,
+                    requestCount: 1
+                });
+            } else {
+                const client = clients.get(clientIP);
+                client.lastSeen = now;
+                client.requestCount++;
+                // Если клиент стал вредоносным, помечаем его как вредоносного
+                if (request.isMalicious) {
+                    client.isMalicious = true;
+                }
+            }
+        }
+
+        // Обновление всей статистики
+        function updateAllStats() {
+            updateRequestsStats();
+            updateClientsStats();
+            updateAgentsStats();
+        }
+
+        // Обновление статистики запросов
+        function updateRequestsStats() {
+            document.getElementById('total-requests').textContent = requests.length;
+        }
+
+        // Обновление статистики клиентов
+        function updateClientsStats() {
+            const legitClients = Array.from(clients.values()).filter(client => !client.isMalicious).length;
+            const maliciousClients = Array.from(clients.values()).filter(client => client.isMalicious).length;
+            
+            document.getElementById('legit-clients').textContent = legitClients;
+            document.getElementById('malicious-clients').textContent = maliciousClients;
+        }
+
+        // Обновление статистики агентов
+        function updateAgentsStats() {
+            document.getElementById('real-servers').textContent = agents.realServers || 0;
+            document.getElementById('honeypots').textContent = agents.honeypots || 0;
+        }
+
+        // Функция обновления статуса соединения
+        function updateConnectionStatus(connected) {
+            const statusElement = document.getElementById('connection-status') || createConnectionStatusElement();
+            statusElement.textContent = connected ? '🟢 Connected' : '🔴 Disconnected';
+            statusElement.style.color = connected ? '#2ecc71' : '#e74c3c';
+        }
+
+        // Создание элемента статуса соединения
+        function createConnectionStatusElement() {
+            const statusElement = document.createElement('div');
+            statusElement.id = 'connection-status';
+            statusElement.style.marginLeft = '20px';
+            statusElement.style.fontSize = '0.9rem';
+            statusElement.style.fontWeight = 'bold';
+            document.querySelector('.header-left').appendChild(statusElement);
+            return statusElement;
+        }
+
+        // Обновление данных графика
+        function updateChartData() {
+            // Сбрасываем данные графика
+            chartData.legit = Array(24).fill(0);
+            chartData.malicious = Array(24).fill(0);
+            
+            // Обновляем график
+            activityChart.data.labels = chartData.labels;
+            activityChart.data.datasets[0].data = chartData.legit;
+            activityChart.data.datasets[1].data = chartData.malicious;
+            activityChart.update('none');
+        }
+
+        // Обновление графика при новом запросе
+        function updateChartWithNewRequest(request) {
+            const requestTime = new Date(request.receivedAt);
+            const now = new Date();
+            
+            // Находим соответствующий временной интервал (текущий час)
+            const currentHour = now.getHours();
+            const requestHour = requestTime.getHours();
+            
+            // Определяем индекс в массиве данных (0-23)
+            let index = (requestHour - (currentHour - 23) + 24) % 24;
+            
+            if (index >= 0 && index < 24) {
+                // Обновляем счетчик для соответствующего типа клиента
+                const client = clients.get(request.clientIP);
+                if (client) {
+                    if (client.isMalicious) {
+                        chartData.malicious[index] = Math.max(chartData.malicious[index], 
+                            Array.from(clients.values()).filter(c => c.isMalicious).length);
+                    } else {
+                        chartData.legit[index] = Math.max(chartData.legit[index],
+                            Array.from(clients.values()).filter(c => !c.isMalicious).length);
+                    }
+                }
+                
+                // Автоматически подстраиваем максимальное значение оси Y
+                const maxValue = Math.max(...chartData.legit, ...chartData.malicious);
+                activityChart.options.scales.y.suggestedMax = Math.max(10, maxValue + 2);
+                
+                // Обновляем график
+                activityChart.data.datasets[0].data = chartData.legit;
+                activityChart.data.datasets[1].data = chartData.malicious;
+                activityChart.update('none');
+            }
+        }
+
+        // Обновление таблицы запросов
+        function updateRequestsTable() {
             const tableBody = document.getElementById('requests-table-body');
             tableBody.innerHTML = '';
             
-            // Показываем последние 10 запросов
-            const recentRequests = requests.slice(-10).reverse();
+            // Показываем последние 20 запросов
+            const recentRequests = requests.slice(-20).reverse();
             
             recentRequests.forEach(request => {
-                const row = document.createElement('tr');
-                const statusClass = request.IsMalicious ? 'status-malicious' : 'status-legit';
-                const statusText = request.IsMalicious ? '🚨 MALICIOUS' : '✅ LEGIT';
-                
-                row.innerHTML = `
-                    <td><span class="status-badge ${statusClass}">${statusText}</span></td>
-                    <td>${request.ClientIP}</td>
-                    <td>${request.Path}</td>
-                    <td>${request.ReceivedAt}</td>
-                `;
-                
-                tableBody.appendChild(row);
+                addRequestToTable(request, tableBody);
             });
-            
-            // Обновление графика
-            updateChart();
         }
 
-        // Функция для обновления графика
-        function updateChart() {
-            // Группируем запросы по времени (последние 24 часа)
-            const now = new Date();
-            const timeLabels = [];
-            const legitData = [];
-            const maliciousData = [];
+        // Добавление нового запроса в таблицу
+        function addNewRequestToTable(request) {
+            const tableBody = document.getElementById('requests-table-body');
             
-            // Создаем временные интервалы (последние 12 часов с интервалом в 1 час)
-            for (let i = 11; i >= 0; i--) {
-                const time = new Date(now);
-                time.setHours(now.getHours() - i);
-                timeLabels.push(time.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'}));
-                
-                const hourStart = new Date(time);
-                hourStart.setMinutes(0, 0, 0);
-                
-                const hourEnd = new Date(time);
-                hourEnd.setMinutes(59, 59, 999);
-                
-                const hourRequests = requests.filter(req => {
-                    const reqTime = new Date(req.ReceivedAt);
-                    return reqTime >= hourStart && reqTime <= hourEnd;
-                });
-                
-                legitData.push(hourRequests.filter(req => !req.IsMalicious).length);
-                maliciousData.push(hourRequests.filter(req => req.IsMalicious).length);
+            // Добавляем новую строку в начало таблицы
+            addRequestToTable(request, tableBody);
+            
+            // Удаляем старые строки если больше 20
+            const rows = tableBody.getElementsByTagName('tr');
+            if (rows.length > 20) {
+                tableBody.removeChild(rows[rows.length - 1]);
             }
             
-            // Обновляем данные графика
-            activityChart.data.labels = timeLabels;
-            activityChart.data.datasets[0].data = legitData;
-            activityChart.data.datasets[1].data = maliciousData;
-            activityChart.update();
+            // Добавляем анимацию подсветки новой строки
+            const newRow = tableBody.firstChild;
+            newRow.style.backgroundColor = 'rgba(52, 152, 219, 0.1)';
+            setTimeout(() => {
+                newRow.style.backgroundColor = '';
+            }, 2000);
         }
 
-        // Функция для получения данных с сервера
-        async function fetchRequests() {
-            try {
-                const response = await fetch('/user_registered');
-                if (response.ok) {
-                    const data = await response.json();
-                    requests = data.requests || [];
-                    updateStats();
-                }
-            } catch (error) {
-                console.error('Ошибка при получении данных:', error);
-            }
-        }
-
-        // Имитация получения данных (для демонстрации)
-        function simulateData() {
-            // Генерируем тестовые данные
-            const mockRequests = [
-                {
-                    ClientIP: '192.168.1.100',
-                    Path: '/login',
-                    IsMalicious: false,
-                    Timestamp: new Date().toISOString(),
-                    ReceivedAt: new Date().toLocaleString()
-                },
-                {
-                    ClientIP: '10.0.0.50',
-                    Path: '/admin',
-                    IsMalicious: true,
-                    Timestamp: new Date(Date.now() - 300000).toISOString(),
-                    ReceivedAt: new Date(Date.now() - 300000).toLocaleString()
-                },
-                {
-                    ClientIP: '172.16.0.25',
-                    Path: '/api/data',
-                    IsMalicious: false,
-                    Timestamp: new Date(Date.now() - 600000).toISOString(),
-                    ReceivedAt: new Date(Date.now() - 600000).toLocaleString()
-                }
-            ];
+        // Добавление запроса в таблицу
+        function addRequestToTable(request, tableBody) {
+            const row = document.createElement('tr');
+            const statusClass = request.isMalicious ? 'status-malicious' : 'status-legit';
+            const statusText = request.isMalicious ? '🚨 MALICIOUS' : '✅ LEGIT';
+            const receivedAt = new Date(request.receivedAt).toLocaleString();
             
-            requests = mockRequests;
-            updateStats();
+            row.innerHTML = `
+                <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+                <td>${request.clientIP}</td>
+                <td>${request.path}</td>
+                <td>${receivedAt}</td>
+            `;
             
-            // В реальном приложении здесь будет вызов fetchRequests()
-            // setInterval(fetchRequests, 5000); // Обновление каждые 5 секунд
+            // Добавляем анимацию появления
+            row.style.opacity = '0';
+            row.style.transform = 'translateY(-10px)';
+            row.style.transition = 'all 0.3s ease';
+            
+            tableBody.insertBefore(row, tableBody.firstChild);
+            
+            // Запускаем анимацию
+            setTimeout(() => {
+                row.style.opacity = '1';
+                row.style.transform = 'translateY(0)';
+            }, 10);
         }
 
         // Обработчики для выпадающих меню
@@ -200,25 +413,30 @@
             link.addEventListener('click', function(e) {
                 e.preventDefault();
                 
-                // Убираем активный класс у всех ссылок
                 document.querySelectorAll('.nav-links a').forEach(item => {
                     item.classList.remove('active');
                 });
                 
-                // Добавляем активный класс к текущей ссылке
                 this.classList.add('active');
                 
-                // Обновляем заголовок страницы
                 const pageTitle = this.querySelector('span').textContent;
                 document.getElementById('page-title').textContent = pageTitle;
-                
-                // Здесь можно добавить логику загрузки контента для разных страниц
-                const page = this.getAttribute('data-page');
-                console.log(`Переход на страницу: ${page}`);
             });
         });
 
         // Инициализация при загрузке страницы
         document.addEventListener('DOMContentLoaded', function() {
-            simulateData(); // Для демонстрации
+            // Инициализируем график
+            updateChartData();
+            
+            // Подключаемся к SSE
+            connectSSE();
+        });
+
+        // Обработка перед закрытием страницы
+        window.addEventListener('beforeunload', function() {
+            if (eventSource) {
+                eventSource.close();
+            }
+            clearTimeout(reconnectTimeout);
         });

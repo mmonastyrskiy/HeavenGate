@@ -4,6 +4,7 @@
             --danger-color: #e74c3c;
             --success-color: #2ecc71;
             --warning-color: #f39c12;
+            --info-color: #9b59b6;
             --light-color: #ecf0f1;
             --dark-color: #34495e;
             --sidebar-width: 250px;
@@ -179,6 +180,12 @@
             display: flex;
             align-items: center;
             gap: 15px;
+            transition: transform 0.2s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
         }
 
         .stat-icon {
@@ -208,6 +215,12 @@
             padding: 20px;
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
             margin-bottom: 30px;
+            height: 400px;
+        }
+
+        .chart-wrapper {
+            position: relative;
+            height: 350px;
         }
 
         .requests-table {
