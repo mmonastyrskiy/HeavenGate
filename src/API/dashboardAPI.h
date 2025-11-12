@@ -33,6 +33,7 @@ public:
                                    const std::string& server_id,
                                    bool is_malicious,
                                    int* err = nullptr);
+    std::string callAgentChange(const int& real_size, const int& honey_size, int* err = nullptr);
 
     DashboardAPI() = default;
     ~DashboardAPI() = default;

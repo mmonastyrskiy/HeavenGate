@@ -42,6 +42,83 @@ DashboardAPI& DashboardAPI::the() {
     return instance;
 }
 
+std::string DashboardAPI::callAgentChange(const int& real_size, const int& honey_size, int* err = nullptr){
+
+    CURL* curl;
+    CURLcode res;
+    std::string response;
+    
+    // Initialize cURL
+    curl_global_init(CURL_GLOBAL_DEFAULT);
+    curl = curl_easy_init();
+    
+    if(!curl) {
+        if(err) *err = -1;
+        curl_global_cleanup();
+        return "";
+    }
+    
+    // Form the full URL - use the class member with proper scope
+    std::string url = DashboardAPI::baseUrl + "/agents";
+
+    std::string currentTime = getCurrentTimeISO();
+    
+    // Form JSON data
+    std::string jsonData = "{"
+                      "\"realServers\":" + std::to_string(real_size) + ","
+                      "\"honeypots\":" + std::to_string(honey_size) + ""
+                      "}";
+    auto showRequests = Confparcer::SETTING<bool>("SHOW_REQ_LOG",true);
+    if(showRequests){
+    LOG_INFO("Sending JSON: " + jsonData);
+    LOG_INFO("URL: " + url);
+    }
+    
+    // Set headers
+    struct curl_slist* headers = NULL;
+    headers = curl_slist_append(headers, "Content-Type: application/json");
+    headers = curl_slist_append(headers, "Accept: application/json");
+    
+    // Configure cURL options
+    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+    curl_easy_setopt(curl, CURLOPT_POST, 1L);
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, jsonData.c_str());
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, jsonData.length());
+    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30L);
+    
+    // Execute request
+    res = curl_easy_perform(curl);
+    
+    // Handle errors
+    if(res != CURLE_OK) {
+        std::cerr << "cURL error: " << curl_easy_strerror(res) << std::endl;
+        if(err) *err = static_cast<int>(res);
+        response = "";
+        LOG_WARN("Error connecting to the dashboard");
+    } else {
+        long http_code = 0;
+        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
+        
+        if(http_code != 200) {
+            std::cerr << "HTTP error: " << http_code << std::endl;
+            if(err) *err = static_cast<int>(http_code);
+        } else {
+            if(err) *err = 0;
+        }
+    }
+    
+    // Cleanup
+    curl_slist_free_all(headers);
+    curl_easy_cleanup(curl);
+    curl_global_cleanup();
+    
+    return response;
+}
+
+
 // Main API method implementation
 std::string DashboardAPI::callUserRegistered(const std::string& client_ip, 
                                            const std::string& server_id, 

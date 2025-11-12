@@ -74,6 +74,8 @@ void LoadBalancer::add_backend(std::shared_ptr<BackendNode> server_ptr) {
         }
     );
     LOG_INFO("New host registered IP: " + server_ptr->host +": " + std::to_string(server_ptr->port) + "Is honeypot: " + (server_ptr->is_honeypot ? "true" : "false"));
+
+    DashboardAPI::the().callAgentChange(real_backends_.size(),honeypot_backends_.size());
 }
 
 std::shared_ptr<BackendNode> LoadBalancer::select_backend(bool is_malicious, const std::string& client_ip) {
