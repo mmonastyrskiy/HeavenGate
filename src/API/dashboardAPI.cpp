@@ -75,8 +75,8 @@ std::string DashboardAPI::callUserRegistered(const std::string& client_ip,
                           "}";
     auto showRequests = Confparcer::SETTING<bool>("SHOW_REQ_LOG",true);
     if(showRequests){
-    logger::Logger::info("Sending JSON: " + jsonData);
-    logger::Logger::info("URL: " + url);
+    LOG_INFO("Sending JSON: " + jsonData);
+    LOG_INFO("URL: " + url);
     }
     
     // Set headers
@@ -102,7 +102,7 @@ std::string DashboardAPI::callUserRegistered(const std::string& client_ip,
         std::cerr << "cURL error: " << curl_easy_strerror(res) << std::endl;
         if(err) *err = static_cast<int>(res);
         response = "";
-        logger::Logger::warn("Error connecting to the dashboard");
+        LOG_WARN("Error connecting to the dashboard");
     } else {
         long http_code = 0;
         curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);

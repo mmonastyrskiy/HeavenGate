@@ -47,14 +47,14 @@ static T SETTING(const std::string& sett, const T& default_value = T{}) {
     } else if (!conf.empty()) {
         value = conf;
     } else {
-        logger::Logger::warn("Using default value for setting: " + sett);
+        LOG_WARN("Using default value for setting: " + sett);
         return default_value;
     }
     
     try {
         return utils::convertFromString<T>(value);
     } catch (const std::invalid_argument& e) {
-        logger::Logger::fatal("Conversion failed for setting '" + sett + "'. Value: '" + value + "', Expected type: " + typeid(T).name());
+        LOG_FATAL("Conversion failed for setting '" + sett + "'. Value: '" + value + "', Expected type: " + typeid(T).name());
         return default_value;
     }
 }
