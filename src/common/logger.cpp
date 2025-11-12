@@ -62,33 +62,33 @@ void Logger::warn(const std::string& msg) {
 void Logger::err(const std::string& msg,const char * file, int line) {
     std::string timestamp = getCurrentTimeISO();
     std::cout << timestamp;
-    auto p = color::print::error() << " [ERROR] " + static_cast<std::string>(file) + std::to_string(line) << " " << msg;
+    auto p = color::print::error() << " [ERROR] " + static_cast<std::string>(file)+ ": " + std::to_string(line) << " " << msg;
     p.println();
     
     if(WRITE_TO_FILE()) {
-        writelog(timestamp + " [ERROR]  " + static_cast<std::string>(file) + std::to_string(line) + msg);
+        writelog(timestamp + " [ERROR]  " + static_cast<std::string>(file) +": "+ std::to_string(line) + msg);
     }
 }
 
 void Logger::fatal(const std::string& msg,const char * file, int line) {
     std::string timestamp = getCurrentTimeISO();
     std::cout << timestamp;
-    auto p = color::print::magenta().bold() << " [FATAL] " + static_cast<std::string>(file) + std::to_string(line) <<" "<< msg;
+    auto p = color::print::magenta().bold() << " [FATAL] " + static_cast<std::string>(file) +": " + std::to_string(line) <<" "<< msg;
     p.println();
-    assert(false);
 
     
     
     if(WRITE_TO_FILE()) {
-        writelog(timestamp + " [FATAL] " + static_cast<std::string>(file) + std::to_string(line) + msg);
+        writelog(timestamp + " [FATAL] " + static_cast<std::string>(file) +": "+ std::to_string(line) + msg);
     }
+     assert(false);
 
 }
 
 void Logger::debug(const std::string& msg,const char * file, int line) {
     std::string timestamp = getCurrentTimeISO();
     std::cout << timestamp;
-    auto p = color::print::green().bold() << " [DEBUG] " + static_cast<std::string>(file) + std::to_string(line) << " " << msg;
+    auto p = color::print::green().bold() << " [DEBUG] " + static_cast<std::string>(file) + ": " + std::to_string(line) << " " << msg;
     p.println();
 }
 
