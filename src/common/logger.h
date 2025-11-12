@@ -13,9 +13,9 @@ public:
     Logger();
     static void info(const std::string&);
     static void warn(const std::string&);
-    static void err(const std::string&);
-    static void fatal(const std::string&);
-    static void debug(const std::string&);
+    static void err(const std::string&, const char * file, int line);
+    static void fatal(const std::string&,const char * file, int line);
+    static void debug(const std::string&,const char * file, int line);
     static void writelog(const std::string&);
 
 private:

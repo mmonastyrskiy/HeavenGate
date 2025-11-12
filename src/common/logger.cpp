@@ -6,6 +6,7 @@
 #include <iostream>
 #include <fstream>
 #include <stdexcept>
+#include <cassert>
 #include "../../include/colorText.h"
 #include "Confparcer.h"
 
@@ -58,36 +59,36 @@ void Logger::warn(const std::string& msg) {
     }
 }
 
-void Logger::err(const std::string& msg) {
+void Logger::err(const std::string& msg,const char * file=__FILE__, int line=__LINE__) {
     std::string timestamp = getCurrentTimeISO();
     std::cout << timestamp;
-    auto p = color::print::error() << " [ERROR] " + static_cast<std::string>( __FILE__) + static_cast<char>(__LINE__) << " " << msg;
+    auto p = color::print::error() << " [ERROR] " + static_cast<std::string>(file) + std::to_string(__LINE__) << " " << msg;
     p.println();
     
     if(WRITE_TO_FILE()) {
-        writelog(timestamp + " [ERROR]  " + __FILE__ + static_cast<char>(__LINE__) + msg);
+        writelog(timestamp + " [ERROR]  " + static_cast<std::string>(file) + std::to_string(__LINE__) + msg);
     }
 }
 
-void Logger::fatal(const std::string& msg) {
+void Logger::fatal(const std::string& msg,const char * file=__FILE__, int line=__LINE__) {
     std::string timestamp = getCurrentTimeISO();
     std::cout << timestamp;
-    auto p = color::print::magenta().bold() << " [FATAL] " + static_cast<std::string>( __FILE__) + static_cast<char>(__LINE__) <<" "<< msg;
+    auto p = color::print::magenta().bold() << " [FATAL] " + static_cast<std::string>(file) + std::to_string(__LINE__) <<" "<< msg;
     p.println();
+    assert(false);
 
     
     
     if(WRITE_TO_FILE()) {
-        writelog(timestamp + " [FATAL] " +  + __FILE__ + static_cast<char>(__LINE__) + msg);
+        writelog(timestamp + " [FATAL] " + static_cast<std::string>(file) + std::to_string(__LINE__) + msg);
     }
-    std::runtime_error("Fatal called " +static_cast<std::string>( __FILE__) + static_cast<char>(__LINE__));
 
 }
 
-void Logger::debug(const std::string& msg) {
+void Logger::debug(const std::string& msg,const char * file=__FILE__, int line=__LINE__) {
     std::string timestamp = getCurrentTimeISO();
     std::cout << timestamp;
-    auto p = color::print::green().bold() << " [DEBUG] " + static_cast<std::string>( __FILE__) + static_cast<char>(__LINE__) << " " << msg;
+    auto p = color::print::green().bold() << " [DEBUG] " + static_cast<std::string>(file) + std::to_string(__LINE__) << " " << msg;
     p.println();
 }
 
