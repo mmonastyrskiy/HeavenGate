@@ -12,6 +12,7 @@
 #include <random>
 #include <functional>
 #include "../API/dashboardAPI.h"
+#include "../common/generic.h"
 
 // ClientConnection implementation
 ClientConnection::ClientConnection(asio::io_context& io_context, const std::string& ip)
@@ -94,7 +95,7 @@ void LoadBalancer::start(int port) {
         start_health_checks();
 
     } catch (const std::exception& e) {
-        LOG_ERROR("Failed to start LoadBalancer: " + std::string(e.what()));
+        LOG_FATAL("Failed to start LoadBalancer: " + std::string(e.what()));
         running_ = false;
     }
 }
@@ -334,6 +335,8 @@ std::shared_ptr<BackendNode> LoadBalancer::select_backend(bool is_malicious, con
         case RoutingStrategy::WEIGHTED:
             selected = weighted_selection(healthy_backends);
             break;
+        default:
+        VERIFY_NOT_REACHED();
     }
 
     auto end_time = std::chrono::steady_clock::now();
@@ -692,6 +695,6 @@ std::string LoadBalancer::strategy_to_string(RoutingStrategy strategy) {
         case RoutingStrategy::LEAST_CONNECTIONS: return "Least Connections";
         case RoutingStrategy::IP_HASH: return "IP Hash";
         case RoutingStrategy::WEIGHTED: return "Weighted";
-        default: return "Unknown";
+        default: VERIFY_NOT_REACHED();
     }
 }
