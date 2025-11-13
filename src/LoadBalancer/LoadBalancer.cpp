@@ -433,6 +433,7 @@ void LoadBalancer::handle_classification(const Event& event) {
             
             // If we have client pointer, we can resume request processing
             if (client_ptr_val != 0) {
+                TODO();
                 // Note: In real implementation, you'd need to map client_ptr_val back to ClientConnection
                 // This might require maintaining a registry of active connections
             }
