@@ -16,7 +16,7 @@
 #include <thread>
 #include <chrono>
 #include <unordered_map>
-#include <asio.hpp>
+#include "../../thirdparty/asio/include/asio.hpp"
 #include "../DataBus/DataBus.h"
 
 class ClientConnection : public std::enable_shared_from_this<ClientConnection> {
