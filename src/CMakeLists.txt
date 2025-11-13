@@ -104,6 +104,11 @@ target_include_directories(colorText INTERFACE
     ${CMAKE_SOURCE_DIR}/include
 )
 
+
+add_library(asio INTERFACE)
+target_include_directories(asio INTERFACE ${CMAKE_SOURCE_DIR}/thirdparty/asio/include)
+target_compile_definitions(asio INTERFACE ASIO_STANDALONE ASIO_HEADER_ONLY)
+target_compile_features(asio INTERFACE cxx_std_17)
 # ==================== КОНЕЦ HEADER-ONLY БИБЛИОТЕК ====================
 
 # Определяем целевую ОС
@@ -174,6 +179,7 @@ target_link_libraries(heavengate PRIVATE
     ${PLATFORM_LIBS}
     json_header_only
     colorText
+    asio
 )
 
 # Компиляционные флаги
