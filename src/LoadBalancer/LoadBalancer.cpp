@@ -545,7 +545,7 @@ void LoadBalancer::perform_health_checks() {
 
 bool LoadBalancer::check_server_health(const std::shared_ptr<BackendNode>& server) {
     try {
-        // Simple TCP connection check
+        // TCP connection check with timeout
         asio::io_context io_context;
         asio::ip::tcp::socket socket(io_context);
         asio::ip::tcp::endpoint endpoint(
@@ -553,11 +553,28 @@ bool LoadBalancer::check_server_health(const std::shared_ptr<BackendNode>& serve
             server->port
         );
         
-        socket.connect(endpoint, std::chrono::seconds(2));
-        bool is_healthy = socket.is_open();
-        socket.close();
+        // Use async connect with timeout
+        bool connected = false;
+        std::promise<bool> connect_promise;
+        std::future<bool> connect_future = connect_promise.get_future();
         
-        return is_healthy;
+        socket.async_connect(endpoint,
+            [&](const asio::error_code& error) {
+                if (!error) {
+                    connected = true;
+                }
+                connect_promise.set_value(!error);
+            });
+        
+        // Run io_context with timeout
+        io_context.run_for(std::chrono::seconds(2));
+        
+        if (socket.is_open()) {
+            socket.close();
+        }
+        
+        return connected;
+        
     } catch (const std::exception& e) {
         LOG_WARN("Health check failed for " + server->id + ": " + e.what());
         return false;
@@ -660,7 +677,7 @@ LoadBalancerStats LoadBalancer::get_stats() const {
     return stats;
 }
 
-PerformanceMetrics LoadBalancer::get_performance_metrics() const {
+const PerformanceMetrics& LoadBalancer::get_performance_metrics() const {
     return performance_;
 }
 

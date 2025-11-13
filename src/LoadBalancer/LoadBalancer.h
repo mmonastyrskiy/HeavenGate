@@ -93,7 +93,7 @@ public:
     void set_routing_strategy(RoutingStrategy strategy);
     
     LoadBalancerStats get_stats() const;
-    PerformanceMetrics get_performance_metrics() const;
+    const PerformanceMetrics& get_performance_metrics() const;
     
     static std::string strategy_to_string(RoutingStrategy strategy);
 

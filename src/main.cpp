@@ -27,7 +27,7 @@ void signalHandler(int sig) {
 
 void printStats(const LoadBalancer& balancer) {
     auto stats = balancer.get_stats();
-    auto metrics = balancer.get_performance_metrics();
+    const auto& metrics = balancer.get_performance_metrics(); // const reference
     
     auto uptime = std::chrono::duration_cast<std::chrono::seconds>(
         std::chrono::steady_clock::now() - stats.start_time);
