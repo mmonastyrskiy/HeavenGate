@@ -101,4 +101,7 @@ namespace Argparcer {
         return "";
     }
 
+Argparcer::Argparcer(){ // FIXME: IMPLEMENT THIS 
+    parse(0,nullptr);
+}
 } // namespace Argparcer
