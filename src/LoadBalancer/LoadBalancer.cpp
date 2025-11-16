@@ -106,7 +106,7 @@ void LoadBalancer::updateClientsStats() {
 }
 
 LoadBalancer::~LoadBalancer() {
-    stop();
+    LoadBalancer::stop();
     DataBus::instance().unsubscribe(health_check_sub_);
     DataBus::instance().unsubscribe(classification_sub_);
     DataBus::instance().unsubscribe(response_sub_);
