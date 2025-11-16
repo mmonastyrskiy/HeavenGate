@@ -1,6 +1,7 @@
 #include "geo2ip.h"
 #include "../common/logger.h"
 #include <stdexcept>
+#include <cstring>
 
 geo2ip::geo2ip() {
     // Initialize MMDB structure
