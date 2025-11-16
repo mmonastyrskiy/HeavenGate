@@ -105,6 +105,7 @@ LOG_DEBUG("LOADING ENV");
 env = std::getenv(HG_ENVKEY);
 std::filesystem::path base = env;
 if (env == nullptr){
+    LOG_WARN("Failed to load ENV");
     #ifndef KDEBUG
 
 std::filesystem::path base = "/var/HeavenGate"; //TODO: Has to be created //TODO: CHANGE ON RELEASE
