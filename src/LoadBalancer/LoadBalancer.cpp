@@ -12,6 +12,7 @@
 #include <random>
 #include <functional>
 #include "../API/dashboardAPI.h"
+#include "../common/Confparcer.h"
 #include "../common/generic.h"
 
 // ClientConnection implementation
@@ -136,7 +137,8 @@ void LoadBalancer::start(int port) {
         });
 
         start_health_checks();
-        start_stats_updater(std::chrono::seconds(30)); // Обновляем статистику каждые 30 секунд
+        int timeout = Confparcer::SETTING<int>("DASHBOARD_AUTOUPDATE_PERIOD",30);
+        start_stats_updater(std::chrono::seconds(timeout)); // Обновляем статистику каждые 30 секунд
 
     } catch (const std::exception& e) {
         LOG_FATAL("Failed to start LoadBalancer: " + std::string(e.what()));

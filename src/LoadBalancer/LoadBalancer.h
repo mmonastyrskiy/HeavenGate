@@ -83,7 +83,7 @@ struct PerformanceMetrics {
 
 class LoadBalancer {
 public:
-    LoadBalancer(RoutingStrategy strategy = RoutingStrategy::ROUND_ROBIN);
+    LoadBalancer(RoutingStrategy strategy = RoutingStrategy::IP_HASH);
     ~LoadBalancer();
 
     void start(int port = 80);
