@@ -39,15 +39,13 @@
         int status = MMDB_get_value(&result.entry, &entry_data, 
                                    "country", "names", "en", NULL);
 
-        if (status == MMDB_SUCCESS && entry_data.has_data) {
-            return std::string(entry_data.utf8_string, entry_data.data_size);
-        }
 
         // Пробуем получить код страны
         status = MMDB_get_value(&result.entry, &entry_data, 
                                "country", "iso_code", NULL);
 
         if (status == MMDB_SUCCESS && entry_data.has_data) {
+            LOG_INFO("Found code for client " + ip + "county is  "  + entry_data.utf8_string);
             return std::string(entry_data.utf8_string, entry_data.data_size);
         }
         LOG_WARN("Country information not available");
