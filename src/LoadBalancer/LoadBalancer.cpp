@@ -801,6 +801,7 @@ void LoadBalancer::start_stats_updater(std::chrono::seconds interval) {
         while (stats_updater_running_.load()) {
             // Периодически обновляем статистику
             updateClientsStats();
+            DashboardAPI::the().callAgentChange(real_backends_.size(), honeypot_backends_.size());
             
             // Используем таймаут с проверкой флага
             for (int i = 0; i < interval.count() && stats_updater_running_.load(); ++i) {
