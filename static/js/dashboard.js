@@ -197,6 +197,11 @@
                     
                 case 'ping':
                     break;
+                case 'clients_update':
+                    console.log("Clients update recieved:", data.data);
+                    clients = data;
+                    updateClientsStats()
+                    break;
                     
                 default:
                     console.log('Unknown message type:', data.type);
@@ -248,11 +253,8 @@
 
         // Обновление статистики клиентов
         function updateClientsStats() {
-            const legitClients = Array.from(clients.values()).filter(client => !client.isMalicious).length;
-            const maliciousClients = Array.from(clients.values()).filter(client => client.isMalicious).length;
-            
-            document.getElementById('legit-clients').textContent = legitClients;
-            document.getElementById('malicious-clients').textContent = maliciousClients;
+            document.getElementById('legit-clients').textContent = clientsData.legitClients || 0;
+            document.getElementById('malicious-clients').textContent = clientsData.maliciousClients || 0;
         }
 
         // Обновление статистики агентов

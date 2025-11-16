@@ -60,7 +60,7 @@ func main() {
 	http.HandleFunc("/api/req_registered", handleBalancerRequest)
 
 	// API для получения истории запросов
-	http.HandleFunc("/api/user_registered", getRequestsHistory)
+	http.HandleFunc("/api/user_registered", getUserUpdate)
 
 	// API для обновления информации об агентах
 	http.HandleFunc("/api/agents", handleAgentsUpdate)
@@ -162,7 +162,7 @@ func prepareStats() map[string]interface{} {
 	}
 }
 
-func getRequestsHistory(w http.ResponseWriter, r *http.Request) {
+func getUserHistory(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -184,15 +184,17 @@ func getRequestsHistory(w http.ResponseWriter, r *http.Request) {
 	}
 
 	responseData := map[string]interface{}{
-		"requests":  requests,
-		"total":     len(requests),
 		"legitClients": legitClients,
 		"maliciousClients": maliciousClients,
-		"agents":    agents,
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(responseData)
+
+		broadcastToSSEClients("clients_update", map[string]interface{}{
+		"legitClients": legitClients,
+		"maliciousClients": maliciousClients,
+	})
 }
 
 func handleAgentsUpdate(w http.ResponseWriter, r *http.Request) {

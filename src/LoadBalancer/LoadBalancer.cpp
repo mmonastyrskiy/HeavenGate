@@ -162,16 +162,9 @@ void LoadBalancer::handle_accept(ClientConnection::Ptr client, const asio::error
 }
 
 void LoadBalancer::handle_client_request(ClientConnection::Ptr client) {
-    // Check if client already has assigned backend
+    read_from_client(client);
     auto assigned_backend = get_assigned_backend(client->client_ip);
-    
-    if (!assigned_backend) {
-        // For initial request, send to classifier first
-        read_from_client(client);
-    } else {
-        // Client already classified, proxy directly to assigned backend
-        proxy_to_backend(client, assigned_backend);
-    }
+    proxy_to_backend(client,assigned_backend);
 }
 
 void LoadBalancer::read_from_client(ClientConnection::Ptr client) {
@@ -374,7 +367,7 @@ std::shared_ptr<BackendNode> LoadBalancer::select_backend(bool is_malicious, con
         );
 
         int err = 0;
-        DashboardAPI::the().callUserRegistered(client_ip, selected->id, is_malicious, &err);
+        DashboardAPI::the().callRequestRegistered(client_ip, selected->id, is_malicious, &err);
 
     } else {
         stats_.routing_errors++;

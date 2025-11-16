@@ -120,7 +120,7 @@ std::string DashboardAPI::callAgentChange(const int& real_size, const int& honey
 
 
 // Main API method implementation
-std::string DashboardAPI::callUserRegistered(const std::string& client_ip, 
+std::string DashboardAPI::callRequestRegistered(const std::string& client_ip, 
                                            const std::string& server_id, 
                                            bool is_malicious,
                                            int* err) {

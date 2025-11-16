@@ -29,7 +29,7 @@ public:
     static DashboardAPI& the();
 
     // Main API method
-    std::string callUserRegistered(const std::string& client_ip,
+    std::string callRequestRegistered(const std::string& client_ip,
                                    const std::string& server_id,
                                    bool is_malicious,
                                    int* err = nullptr);
