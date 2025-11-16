@@ -170,7 +170,7 @@
         function handleSSEMessage(data) {
             switch (data.type) {
                 case 'initial':
-    console.log('Received initial data', agents,requests);
+    console.log('Received initial data', data.data.agents,data.data.requests);
     requests = data.data.requests || [];
     agents = data.data.agents || agents;
     
