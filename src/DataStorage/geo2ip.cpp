@@ -79,3 +79,6 @@ std::string geo2ip::getCountryByIP(const std::string& ip) {
     return "Unknown";
 }
 
+void geo2ip::closeDB(){
+    MMDB_close(&mmdb);
+}
