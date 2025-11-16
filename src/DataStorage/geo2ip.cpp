@@ -78,10 +78,3 @@ std::string geo2ip::getCountryByIP(const std::string& ip) {
     return "Unknown";
 }
 
-void geo2ip::closeDB() {
-    if (is_open) {
-        MMDB_close(&mmdb);
-        is_open = false;
-        LOG_DEBUG("GeoIP database closed");
-    }
-}
