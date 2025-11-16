@@ -51,3 +51,8 @@
         LOG_WARN("Country information not available");
         return "Country information not available";
     }
+    ~geo2ip(){
+        if (is_open) {
+            MMDB_close(&mmdb);
+        }
+    }
