@@ -140,17 +140,6 @@ find_package(PostgreSQL REQUIRED)
 
 
 
-find_library(MAXMINDDB_LIB NAMES maxminddb)
-find_path(MAXMINDDB_INCLUDE_DIR NAMES maxminddb.h)
-
-
-if(NOT MAXMINDDB_LIB OR NOT MAXMINDDB_INCLUDE_DIR)
-    message(FATAL_ERROR "libmaxminddb not found!")
-endif()
-
-message(STATUS "Found libmaxminddb: ${MAXMINDDB_LIB}")
-message(STATUS "Include dir: ${MAXMINDDB_INCLUDE_DIR}")
-
 if(NOT CURL_FOUND)
     # Fallback: ручной поиск если find_package не сработал
     find_path(CURL_INCLUDE_DIR curl/curl.h
