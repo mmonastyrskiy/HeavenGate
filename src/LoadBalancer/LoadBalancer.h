@@ -98,6 +98,13 @@ public:
     static std::string strategy_to_string(RoutingStrategy strategy);
 
 private:
+
+
+    mutable std::mutex clients_mutex_;
+    int legit_clients_count_ = 0;
+    int malicious_clients_count_ = 0;
+    std::thread stats_updater_thread_;
+
     RoutingStrategy strategy_;
     std::atomic<bool> running_{false};
     
@@ -105,6 +112,7 @@ private:
     std::vector<std::shared_ptr<BackendNode>> honeypot_backends_;
     mutable std::mutex backends_mutex_;
     
+    mutable std::mutex clients_mutex_;
     std::unordered_map<std::string, std::shared_ptr<BackendNode>> client_backend_mapping_;
     mutable std::mutex mapping_mutex_;
     
@@ -124,6 +132,7 @@ private:
     SubscriptionId response_sub_;
 
     void start_accept();
+    void updateClientsStats();
     void handle_accept(ClientConnection::Ptr client, const asio::error_code& error);
     
     std::shared_ptr<BackendNode> select_backend(bool is_malicious, const std::string& client_ip);
@@ -150,12 +159,14 @@ private:
     
     void mark_request_success(const std::string& server_id, std::chrono::milliseconds response_time);
     void mark_request_failure(const std::string& server_id);
+    void remove_client(const std::string& client_ip);
     
     // Proxy functionality
     void proxy_to_backend(ClientConnection::Ptr client, std::shared_ptr<BackendNode> backend);
     void handle_client_request(ClientConnection::Ptr client);
     void read_from_client(ClientConnection::Ptr client);
     void read_from_backend(ClientConnection::Ptr client);
+    void start_stats_updater(std::chrono::seconds 3);
 };
 
 #endif // LOADBALANCER_H

@@ -35,6 +35,8 @@ public:
                                    int* err = nullptr);
     std::string callAgentChange(const int& real_size, const int& honey_size, int* err = nullptr);
 
+    std::string callClientChange(const int& real_size, const int& malicious_size, int* err = nullptr);
+
     DashboardAPI() = default;
     ~DashboardAPI() = default;
 
