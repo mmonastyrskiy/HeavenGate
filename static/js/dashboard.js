@@ -81,8 +81,8 @@
         let requests = [];
         let clients = new Map(); // IP -> {isMalicious, lastSeen, requestCount}
         let agents = {
-            realServers: 3, // Пример начальных данных
-            honeypots: 5
+            realServers: 0, // Пример начальных данных
+            honeypots: 0
         };
 
         // Данные для графика (фиксированные интервалы)
@@ -170,7 +170,7 @@
         function handleSSEMessage(data) {
             switch (data.type) {
                 case 'initial':
-    console.log('Received initial data');
+    console.log('Received initial data', agents,requests);
     requests = data.data.requests || [];
     agents = data.data.agents || agents;
     
