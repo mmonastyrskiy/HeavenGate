@@ -69,8 +69,8 @@ std::string getconfig() const;
 
 private:
     Confparcer();
-    Confparcer(const Confparcer&) = delete;
-    Confparcer& operator=(const Confparcer&) = delete;
+    Confparcer(const Confparcer&) = default;
+    Confparcer& operator=(const Confparcer&) = default;
 
     std::unordered_map<std::string, std::string> config;
 
