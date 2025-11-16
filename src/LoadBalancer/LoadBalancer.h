@@ -111,8 +111,6 @@ private:
     std::vector<std::shared_ptr<BackendNode>> real_backends_;
     std::vector<std::shared_ptr<BackendNode>> honeypot_backends_;
     mutable std::mutex backends_mutex_;
-    
-    mutable std::mutex clients_mutex_;
     std::unordered_map<std::string, std::shared_ptr<BackendNode>> client_backend_mapping_;
     mutable std::mutex mapping_mutex_;
     
@@ -166,7 +164,7 @@ private:
     void handle_client_request(ClientConnection::Ptr client);
     void read_from_client(ClientConnection::Ptr client);
     void read_from_backend(ClientConnection::Ptr client);
-    void start_stats_updater(std::chrono::seconds 3);
+    void start_stats_updater(std::chrono::seconds timeout);
 };
 
 #endif // LOADBALANCER_H
