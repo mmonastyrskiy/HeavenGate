@@ -3,7 +3,6 @@
 
 #include "../common/generic.h"
 #include "../../thirdparty/libmaxminddb/include/maxminddb.h"
-#include "../common/logger.h"
 #include <string>
 
 class geo2ip {
@@ -21,13 +20,7 @@ public:
     bool openDB(const std::string& db_path = DEFAULT_DB_PATH);
     std::string getCountryByIP(const std::string& ip);
     bool isOpen() const { return is_open; }
-    void closeDB(){    
-        if (is_open) {
-        MMDB_close(&mmdb);
-        is_open = false;
-        LOG_DEBUG("GeoIP database closed");
-    }
-}
+    void closeDB();
 
 private:
     MMDB_s mmdb;

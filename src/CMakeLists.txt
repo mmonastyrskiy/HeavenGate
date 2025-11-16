@@ -12,6 +12,7 @@ set(SRC_FILES
     AppManager/AppManager.cpp
     DataBus/DataBus.cpp
     DataStorage/DataStorage.cpp
+    DataStorage/geo2ip.cpp
     LoadBalancer/LoadBalancer.cpp
     common/Argparcer.cpp
     common/logger.cpp
