@@ -27,7 +27,7 @@ set(HEADER_FILES
     DataBus/DataBusMetrics.h
     DataBus/subscriptionID.h
     DataStorage/DataStorage.hpp
-    DataStorage/geo2ip.hpp
+    DataStorage/geo2ip.h
     LoadBalancer/LoadBalancer.h
     ../include/colorText.h
     ../include/strconv.h
