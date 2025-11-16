@@ -725,7 +725,10 @@ std::string LoadBalancer::strategy_to_string(RoutingStrategy strategy) {
         case RoutingStrategy::LEAST_CONNECTIONS: return "Least Connections";
         case RoutingStrategy::IP_HASH: return "IP Hash";
         case RoutingStrategy::WEIGHTED: return "Weighted";
-        default: VERIFY_NOT_REACHED();
+        default: [](){
+         VERIFY_NOT_REACHED();
+         return "Unknown";
+        };
     }
 }
 
