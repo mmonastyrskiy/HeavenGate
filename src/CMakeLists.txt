@@ -138,6 +138,19 @@ find_package(CURL QUIET)
 find_package(libpqxx REQUIRED)
 find_package(PostgreSQL REQUIRED)
 
+
+
+find_library(MAXMINDDB_LIB NAMES maxminddb)
+find_path(MAXMINDDB_INCLUDE_DIR NAMES maxminddb.h)
+
+
+if(NOT MAXMINDDB_LIB OR NOT MAXMINDDB_INCLUDE_DIR)
+    message(FATAL_ERROR "libmaxminddb not found!")
+endif()
+
+message(STATUS "Found libmaxminddb: ${MAXMINDDB_LIB}")
+message(STATUS "Include dir: ${MAXMINDDB_INCLUDE_DIR}"
+
 if(NOT CURL_FOUND)
     # Fallback: ручной поиск если find_package не сработал
     find_path(CURL_INCLUDE_DIR curl/curl.h
@@ -166,6 +179,11 @@ if(CURL_FOUND)
         add_library(curl_lib INTERFACE)
         target_include_directories(curl_lib INTERFACE ${CURL_INCLUDE_DIR})
         target_link_libraries(curl_lib INTERFACE ${CURL_LIBRARY})
+
+        target_include_directories(ip_lookup PRIVATE ${MAXMINDDB_INCLUDE_DIR})
+        target_link_libraries(ip_lookup ${MAXMINDDB_LIB})
+
+
         set(CURL_TARGET curl_lib)
     endif()
 else()
