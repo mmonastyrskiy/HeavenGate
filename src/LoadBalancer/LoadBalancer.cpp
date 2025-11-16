@@ -163,7 +163,7 @@ void LoadBalancer::start(int port) {
             io_context_.run();
         });
 
-        start_health_checks();
+        //start_health_checks(); TODO: UNCOMMENT WHEN BACKENDS WILL BE ONLINE 
         int timeout = Confparcer::SETTING<int>("DASHBOARD_AUTOUPDATE_PERIOD",30);
         start_stats_updater(std::chrono::seconds(timeout)); // Обновляем статистику каждые 30 секунд
 
