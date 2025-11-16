@@ -16,6 +16,9 @@
 #include <memory>
 #include "../common/logger.h"
 #include "../common/Confparcer.h"
+
+
+
 // Callback function for cURL
 static size_t WriteCallback(void* contents, size_t size, size_t nmemb, std::string* response) {
     size_t totalSize = size * nmemb;
@@ -44,7 +47,7 @@ DashboardAPI& DashboardAPI::the() {
 
 
 
-std::string DashboardAPI::callClientChange(const int& real_size, const int& malicious_size, int* err = nullptr){
+std::string DashboardAPI::callClientChange(const int& real_size, const int& malicious_size, int* err){
  
     
     CURL* curl;
