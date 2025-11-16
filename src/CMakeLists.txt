@@ -11,11 +11,13 @@ set(SRC_FILES
     main.cpp
     AppManager/AppManager.cpp
     DataBus/DataBus.cpp
+    DataStorage/DataStorage.cpp
     LoadBalancer/LoadBalancer.cpp
     common/Argparcer.cpp
     common/logger.cpp
     common/Confparcer.cpp
     API/dashboardAPI.cpp
+    API/SysController.cpp
 )
 
 set(HEADER_FILES
@@ -24,6 +26,7 @@ set(HEADER_FILES
     DataBus/BusEvent.h
     DataBus/DataBusMetrics.h
     DataBus/subscriptionID.h
+    DataStorage/DataStorage.hpp
     LoadBalancer/LoadBalancer.h
     ../include/colorText.h
     ../include/strconv.h
@@ -33,6 +36,7 @@ set(HEADER_FILES
     common/Confparcer.h
     common/generic.h
     API/dashboardAPI.h
+    API/SysController.hpp
 )
 
 # ==================== GO DASHBOARD ====================
@@ -130,6 +134,9 @@ endif()
 
 # Поиск CURL
 find_package(CURL QUIET)
+#Поиск постгресс
+find_package(libpqxx REQUIRED)
+find_package(PostgreSQL REQUIRED)
 
 if(NOT CURL_FOUND)
     # Fallback: ручной поиск если find_package не сработал
@@ -180,6 +187,9 @@ target_link_libraries(heavengate PRIVATE
     json_header_only
     colorText
     asio
+    libpqxx::pqxx
+    PostgreSQL::PostgreSQL
+
 )
 
 # Компиляционные флаги
