@@ -220,9 +220,16 @@ void LoadBalancer::handle_accept(ClientConnection::Ptr client, const asio::error
 }
 
 void LoadBalancer::handle_client_request(ClientConnection::Ptr client) {
-    read_from_client(client);
+    // Check if client already has assigned backend
     auto assigned_backend = get_assigned_backend(client->client_ip);
-    proxy_to_backend(client,assigned_backend);
+    
+    if (!assigned_backend) {
+        // For initial request, send to classifier first
+        read_from_client(client);
+    } else {
+        // Client already classified, proxy directly to assigned backend
+        proxy_to_backend(client, assigned_backend);
+    }
 }
 
 void LoadBalancer::read_from_client(ClientConnection::Ptr client) {
