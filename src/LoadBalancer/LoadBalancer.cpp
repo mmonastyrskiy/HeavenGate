@@ -772,3 +772,4 @@ void LoadBalancer::start_stats_updater(std::chrono::seconds interval) {
             std::this_thread::sleep_for(interval);
         }
     });
+}
