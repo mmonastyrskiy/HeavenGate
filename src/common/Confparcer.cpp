@@ -103,6 +103,7 @@ std::string Confparcer::getconfig() const{
 const char* env;
 LOG_DEBUG("LOADING ENV");
 env = std::getenv(HG_ENVKEY);
+std::filesystem::path base = env;
 if (env == nullptr){
     #ifndef KDEBUG
 
@@ -112,8 +113,7 @@ std::filesystem::path base = "/var/HeavenGate"; //TODO: Has to be created //TODO
     #endif
     LOG_DEBUG("LOADING base");
 }
-std::filesystem::path base = env;
-std::filesystem::path config = base /= "config";
+std::filesystem::path config = base += "config";
 config += "default.ini";
 LOG_DEBUG("LOADING path");
 return config.string();
