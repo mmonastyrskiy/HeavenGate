@@ -81,7 +81,7 @@ std::string Confparcer::get(const std::string& key, int* error_code = nullptr) c
     int& e = error_code ? *error_code : dummy_error;
     if(config.size() <= 1){
         LOG_WARN("No ARGS Loaded");
-        return;
+        return "";
     }
     try {
         std::string value = config.at(key);
