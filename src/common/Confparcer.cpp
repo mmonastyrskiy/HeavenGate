@@ -109,11 +109,11 @@ if (env == nullptr){
 
 std::filesystem::path base = "/var/HeavenGate"; //TODO: Has to be created //TODO: CHANGE ON RELEASE
     #else
-    std::filesystem::path base = "/root/Documents/HeavenGate/config";
+    std::filesystem::path base = "/root/Documents/HeavenGate/";
     #endif
     LOG_DEBUG("LOADING base");
 }
-std::filesystem::path config = base += "config";
+std::filesystem::path config = base += "config/";
 config += "default.ini";
 LOG_DEBUG("LOADING path");
 return config.string();
