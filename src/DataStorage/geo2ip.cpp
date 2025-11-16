@@ -5,15 +5,15 @@
     bool geo2ip::openDB(const std::string& dbpath = geo2ip::DBPATH){
         int status = MMDB_open(dbpath.c_str(),MMDB_MODE_MMAP,&mmdb);
            if (status != MMDB_SUCCESS) {
-            LOG_FATAL("Cannot open geo2ip db")
+            LOG_FATAL("Cannot open geo2ip db");
             return false;
         }
         is_open = true;
         return true;
     }
-     std::string getCountryByIP(const std::string& ip) {
+     std::string geo2ip::getCountryByIP(const std::string& ip) {
         if (!is_open) {
-            LOG_WARN("Database is not opened")
+            LOG_WARN("Database is not opened");
             openDB();
 
         }
@@ -51,7 +51,8 @@
         LOG_WARN("Country information not available");
         return "Country information not available";
     }
-    ~geo2ip(){
+
+    geo2ip::~geo2ip(){
         if (is_open) {
             MMDB_close(&mmdb);
         }
