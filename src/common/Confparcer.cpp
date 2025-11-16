@@ -19,6 +19,7 @@
 Confparcer& Confparcer::the() {
     static Confparcer c;
     c.parce();
+    LOG_INFO("Confparcer parce called");
     return c;
 }
 
@@ -78,13 +79,15 @@ int Confparcer::parce() {
 
 std::string Confparcer::get(const std::string& key, int* error_code = nullptr) const {
     // Provide default error code if null pointer is passed
-    int dummy_error;
+    int dummy_error {0};
     int& e = error_code ? *error_code : dummy_error;
-    if(config.size() <= 1){
+
+    if(config.size() < 1){
         LOG_WARN("No ARGS Loaded");
         return "";
     }
     try {
+        LOG_DEBUG("Trying to get value from config");
         std::string value = config.at(key);
         e = ErrorCodes::SUCCESS;
         return value;
