@@ -31,6 +31,7 @@ namespace Argparcer {
 
     Argparcer& Argparcer::the() {
         static Argparcer instance;
+        //instance.parse(); FIXME
         return instance;
     }
 

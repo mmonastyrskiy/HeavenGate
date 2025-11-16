@@ -18,6 +18,7 @@
 
 Confparcer& Confparcer::the() {
     static Confparcer c;
+    c.parce();
     return c;
 }
 
