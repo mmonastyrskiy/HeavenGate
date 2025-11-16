@@ -46,10 +46,6 @@ LoadBalancer::LoadBalancer(RoutingStrategy strategy)
 
     stats_.start_time = std::chrono::steady_clock::now();
 
-// Инициализируем счетчики клиентов
-    int legit_clients_count_ = 0;
-    int malicious_clients_count_ = 0;
-
     health_check_sub_ = DataBus::instance().subscribe(
         BusEventType::SERVICE_HEALTH_UPDATE,
         [this](const Event& event) {
