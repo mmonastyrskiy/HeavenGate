@@ -163,37 +163,41 @@ func prepareStats() map[string]interface{} {
 }
 
 func getUserUpdate(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "GET" {
+	if r.Method != "POST" {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
-	mu.Lock()
-	defer mu.Unlock()
-
-	// Подготавливаем полные данные для ответа
-	legitClients := 0
-	maliciousClients := 0
-	
-	for _, client := range clients {
-		if client.IsMalicious {
-			maliciousClients++
-		} else {
-			legitClients++
-		}
+	// Декодируем JSON из тела запроса
+	var requestData struct {
+		LegitClients     int `json:"legitClients"`
+		MaliciousClients int `json:"maliciousClients"`
 	}
 
-	responseData := map[string]interface{}{
-		"legitClients": legitClients,
-		"maliciousClients": maliciousClients,
+	if err := json.NewDecoder(r.Body).Decode(&requestData); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
 	}
+	defer r.Body.Close()
 
+	// Отправляем данные через SSE
+	broadcastToSSEClients("agents_update", map[string]interface{}{
+		"agents": map[string]interface{}{
+			"legitClients":     requestData.LegitClients,
+			"maliciousClients": requestData.MaliciousClients,
+		},
+	})
+
+	// Возвращаем успешный ответ
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(responseData)
-
-		broadcastToSSEClients("clients_update", map[string]interface{}{
-		"legitClients": legitClients,
-		"maliciousClients": maliciousClients,
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"status":  "success",
+		"message": "Data received and broadcasted",
+		"data": map[string]interface{}{
+			"legitClients":     requestData.LegitClients,
+			"maliciousClients": requestData.MaliciousClients,
+		},
 	})
 }
 
