@@ -14,3 +14,4 @@ set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -DNDEBUG")
 
 add_subdirectory(src)
 add_subdirectory(thirdparty/libmaxminddb)
+add_subdirectory(thirdparty/libpqxx)
