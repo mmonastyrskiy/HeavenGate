@@ -46,8 +46,11 @@ static T SETTING(const std::string& sett, const T& default_value = T{}) {
     // Приоритет: аргументы командной строки > конфиг файл > значение по умолчанию
     if (!arg.empty()) {
         value = arg;
+        LOG_INFO("Using ARG value for setting: " + sett);
+
     } else if (!conf.empty()) {
         value = conf;
+        LOG_INFO("Using CONFIG value for setting: " + sett);
     } else {
         LOG_WARN("Using default value for setting: " + sett);
         return default_value;
