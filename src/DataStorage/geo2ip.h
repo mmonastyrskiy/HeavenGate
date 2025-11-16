@@ -2,9 +2,10 @@
 #include <maxminddb.h>
 #include <string>
 
+ constexpr char* DBPATH = "../../assets/GeoLite2-Country.mmdb";
+
 class geo2ip{
     public:
-    constexpr std::string DBPATH = "../../assets/GeoLite2-Country.mmdb";
     bool openDB(const std::string& dbpath);
     std::string getCountryByIP(const std::string& ip);
 
