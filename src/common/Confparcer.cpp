@@ -116,4 +116,5 @@ return config.string();
 }
 Confparcer::Confparcer(){
     parce();
+    LOG_DEBUG("CONFPARCER PARSE CALLED");
 }

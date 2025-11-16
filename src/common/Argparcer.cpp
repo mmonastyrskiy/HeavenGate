@@ -103,5 +103,6 @@ namespace Argparcer {
 
 Argparcer::Argparcer(){ // FIXME: IMPLEMENT THIS 
     parse(0,nullptr);
+    LOG_DEBUG("ARGPARCER PARSE CALLED");
 }
 } // namespace Argparcer
