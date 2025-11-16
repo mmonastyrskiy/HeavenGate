@@ -10,6 +10,7 @@
 #include "Confparcer.h"
 #include <fstream>
 #include "logger.h"
+#include "generic.h"
 #include <algorithm> // for std::remove
 #include <cctype>    // for std::isspace
 #include <cstdlib>
@@ -92,7 +93,12 @@ const char* env;
 
 env = std::getenv(HG_ENVKEY);
 if (env == nullptr){
-std::filesystem::path base = "/var/HeavenGate"; //TODO: Has to be created
+    #ifndef KDEBUG
+
+std::filesystem::path base = "/var/HeavenGate"; //TODO: Has to be created //TODO: CHANGE ON RELEASE
+    #else
+    std::filesystem::path base = "/root/Documents/HeavenGate/config"
+    #endif
 }
 std::filesystem::path base = env;
 std::filesystem::path config = base /= "config";

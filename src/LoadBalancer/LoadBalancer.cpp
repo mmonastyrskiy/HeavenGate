@@ -14,6 +14,7 @@
 #include "../API/dashboardAPI.h"
 #include "../common/Confparcer.h"
 #include "../common/generic.h"
+#include "../DataStorage/geo2ip.h"
 
 // ClientConnection implementation
 ClientConnection::ClientConnection(asio::io_context& io_context, const std::string& ip)
@@ -192,6 +193,8 @@ void LoadBalancer::handle_accept(ClientConnection::Ptr client, const asio::error
             client->client_ip = remote_ep.address().to_string();
         }
 
+        geo2ip geo_detector;
+        client->countryCode = geo_detector.getCountryByIP(client->client_ip);
         // Publish new client connection event
         DataBus::instance().publish(
             BusEventType::NEW_CLIENT_CONNECTION,
@@ -199,12 +202,13 @@ void LoadBalancer::handle_accept(ClientConnection::Ptr client, const asio::error
             nlohmann::json{
                 {"client_ip", client->client_ip},
                 {"client_id", client->client_id},
+                {"Ip2GEO",client->countryCode},
                 {"timestamp", std::chrono::duration_cast<std::chrono::milliseconds>(
                     std::chrono::system_clock::now().time_since_epoch()).count()}
             }
         );
 
-        LOG_INFO("New client connected: " + client->client_ip);
+        LOG_INFO("New client connected: " + client->client_ip + "FROM: " + client->countryCode);
 
         // Start handling client requests
         handle_client_request(client);

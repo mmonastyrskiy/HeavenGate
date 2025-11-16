@@ -10,13 +10,14 @@ class geo2ip{
     bool is_open {false};
     bool openDB(const std::string& dbpath);
     std::string getCountryByIP(const std::string& ip);
+    ~geo2ip();
 
 
 
     private:
     MMDB_s mmdb;
     bool isopen {false};
-    ~geo2ip();
+
 
 
 };
