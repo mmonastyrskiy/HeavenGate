@@ -40,7 +40,7 @@ static T SETTING(const std::string& sett, const T& default_value = T{}) {
     int e = 0;
     auto confparcer = Confparcer::the();
     confparcer.parce();
-    auto conf = confparcer.get(sett,&ef);
+    auto conf = confparcer.get(sett,&e);
     LOG_DEBUG("GOT VALUES FROM CONFIG AND ARGS " + conf);
     
     std::string value;
