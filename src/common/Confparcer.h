@@ -39,8 +39,8 @@ static T SETTING(const std::string& sett, const T& default_value = T{}) {
     LOG_DEBUG("gOT VALUES FROM ARGS " +arg);
     int e = 0;
     auto confparcer = Confparcer::the();
-    confparcer.parce();
-    conf.get(sett);
+    confparcer.parce(&e);
+    auto conf = confparcer.get(sett);
     LOG_DEBUG("GOT VALUES FROM CONFIG AND ARGS " + conf);
     
     std::string value;
