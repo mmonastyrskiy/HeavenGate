@@ -158,36 +158,41 @@
             }, Math.min(delay * 2, maxReconnectDelay));
         }
 
+
+        function handleClientsUpdate(clientsData) {
+    console.log("Clients update received:", clientsData);
+    
+    // Обновляем статистику клиентов из полученных данных
+    updateClientsStats(clientsData);
+            }
+
         // Обработчик сообщений SSE
         function handleSSEMessage(data) {
             switch (data.type) {
                 case 'initial':
-                    console.log('Received initial data');
-                    requests = data.data.requests || [];
-                    agents = data.data.agents || agents;
-                    updateClientsFromRequests();
-                    updateAllStats();
-                    updateChartData();
-                    updateRequestsTable();
-                    break;
-                    
-                case 'new_request':
-                    console.log('New request received:', data.data.request);
-                    // Добавляем новый запрос
-                    requests.push(data.data.request);
-                    
-                    // Обновляем информацию о клиентах
-                    updateClientInfo(data.data.request);
-                    
-                    // Обновляем статистику
-                    updateAllStats();
-                    
-                    // Обновляем таблицу
-                    addNewRequestToTable(data.data.request);
-                    
-                    // Обновляем график
-                    updateChartWithNewRequest(data.data.request);
-                    break;
+    console.log('Received initial data');
+    requests = data.data.requests || [];
+    agents = data.data.agents || agents;
+    
+    // Восстанавливаем локальные данные клиентов из запросов
+    updateClientsFromRequests();
+    
+    // Но статистику берем из серверных данных, а не вычисляем локально
+    if (data.data.legitClients !== undefined && data.data.maliciousClients !== undefined) {
+        updateClientsStats({
+            legitClients: data.data.legitClients,
+            maliciousClients: data.data.maliciousClients
+        });
+    } else {
+        // На всякий случай, если в initial данных нет статистики
+        updateClientsStats();
+    }
+    
+    updateRequestsStats();
+    updateAgentsStats();
+    updateChartData();
+    updateRequestsTable();
+    break;
                     
                 case 'agents_update':
                     console.log('Agents update received:', data.data);
@@ -252,10 +257,11 @@
         }
 
         // Обновление статистики клиентов
-        function updateClientsStats() {
-            document.getElementById('legit-clients').textContent = clientsData.legitClients || 0;
-            document.getElementById('malicious-clients').textContent = clientsData.maliciousClients || 0;
-        }
+    function updateClientsStats(clientsData) {
+    // Просто устанавливаем значения из полученных данных
+    document.getElementById('legit-clients').textContent = clientsData.legitClients || 0;
+    document.getElementById('malicious-clients').textContent = clientsData.maliciousClients || 0;
+}  
 
         // Обновление статистики агентов
         function updateAgentsStats() {
