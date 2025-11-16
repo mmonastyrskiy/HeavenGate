@@ -104,7 +104,7 @@ private:
     int legit_clients_count_ = 0;
     int malicious_clients_count_ = 0;
     std::thread stats_updater_thread_;
-
+    std::atomic<bool> stats_updater_running_{false};
     RoutingStrategy strategy_;
     std::atomic<bool> running_{false};
     

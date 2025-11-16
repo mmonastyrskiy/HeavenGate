@@ -80,11 +80,14 @@ void LoadBalancer::updateClientsStats() {
     int current_legit = 0;
     int current_malicious = 0;
     
-    for (const auto& [client_ip, backend] : client_backend_mapping_) {
-        if (backend && backend->is_honeypot) {
-            current_malicious++;
-        } else {
-            current_legit++;
+    {
+        std::lock_guard<std::mutex> mapping_lock(mapping_mutex_);
+        for (const auto& [client_ip, backend] : client_backend_mapping_) {
+            if (backend && backend->is_honeypot) {
+                current_malicious++;
+            } else {
+                current_legit++;
+            }
         }
     }
     
@@ -111,7 +114,9 @@ LoadBalancer::~LoadBalancer() {
     DataBus::instance().unsubscribe(health_check_sub_);
     DataBus::instance().unsubscribe(classification_sub_);
     DataBus::instance().unsubscribe(response_sub_);
-
+    
+    // Останавливаем stats updater
+    stats_updater_running_ = false;
     if (stats_updater_thread_.joinable()) {
         stats_updater_thread_.join();
     }
@@ -143,20 +148,31 @@ void LoadBalancer::start(int port) {
     }
 }
 
-void LoadBalancer::stop() {
-    if (!running_.exchange(false)) return;
+void LoadBalancer::start(int port) {
+    if (running_.exchange(true)) return;
 
-    io_context_.stop();
-    
-    if (server_thread_.joinable()) {
-        server_thread_.join();
-    }
-    
-    if (health_check_thread_.joinable()) {
-        health_check_thread_.join();
-    }
+    try {
+        asio::ip::tcp::endpoint endpoint(asio::ip::tcp::v4(), port);
+        acceptor_.open(endpoint.protocol());
+        acceptor_.set_option(asio::ip::tcp::acceptor::reuse_address(true));
+        acceptor_.bind(endpoint);
+        acceptor_.listen();
 
-    LOG_INFO("LoadBalancer stopped");
+        LOG_INFO("LoadBalancer started on port " + std::to_string(port));
+
+        server_thread_ = std::thread([this]() {
+            start_accept();
+            io_context_.run();
+        });
+
+        start_health_checks();
+        start_stats_updater(std::chrono::seconds(30)); // Обновляем статистику каждые 30 секунд
+
+    } catch (const std::exception& e) {
+        LOG_FATAL("Failed to start LoadBalancer: " + std::string(e.what()));
+        running_ = false;
+        stats_updater_running_ = false;
+    }
 }
 
 void LoadBalancer::start_accept() {
@@ -755,21 +771,26 @@ void LoadBalancer::remove_client(const std::string& client_ip) {
             client_backend_mapping_.erase(it);
         }
     }
-
-        updateClientsStats();
+    
+    // Обновляем статистику после удаления клиента
+    updateClientsStats();
     
     LOG_DEBUG("Client removed: " + client_ip);
 }
 
 
 void LoadBalancer::start_stats_updater(std::chrono::seconds interval) {
-    if (running_.exchange(true)) return;
+    if (stats_updater_running_.exchange(true)) return;
 
     stats_updater_thread_ = std::thread([this, interval]() {
-        while (running_.load()) {
-            // Периодически обновляем статистику (на случай если какие-то изменения не были отслежены)
+        while (stats_updater_running_.load()) {
+            // Периодически обновляем статистику
             updateClientsStats();
-            std::this_thread::sleep_for(interval);
+            
+            // Используем таймаут с проверкой флага
+            for (int i = 0; i < interval.count() && stats_updater_running_.load(); ++i) {
+                std::this_thread::sleep_for(std::chrono::seconds(1));
+            }
         }
     });
 }
