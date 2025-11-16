@@ -79,7 +79,10 @@ std::string Confparcer::get(const std::string& key, int* error_code = nullptr) c
     // Provide default error code if null pointer is passed
     int dummy_error;
     int& e = error_code ? *error_code : dummy_error;
-    
+    if(config.size() <= 1){
+        LOG_WARN("No ARGS Loaded");
+        return;
+    }
     try {
         std::string value = config.at(key);
         e = ErrorCodes::SUCCESS;
