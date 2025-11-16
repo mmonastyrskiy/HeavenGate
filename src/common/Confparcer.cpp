@@ -107,3 +107,6 @@ return config.string();
 
 
 }
+Confparcer::Confparcer(){
+    parce();
+}

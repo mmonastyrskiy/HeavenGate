@@ -61,7 +61,7 @@ static T SETTING(const std::string& sett, const T& default_value = T{}) {
 std::string getconfig() const;
 
 private:
-    Confparcer() = default;
+    Confparcer();
     Confparcer(const Confparcer&) = delete;
     Confparcer& operator=(const Confparcer&) = delete;
 
