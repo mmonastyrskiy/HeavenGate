@@ -106,6 +106,33 @@ void LoadBalancer::updateClientsStats() {
     }
 }
 
+void LoadBalancer::stop() {
+    if (!running_.exchange(false)) return;
+
+    // Останавливаем stats updater
+    stats_updater_running_ = false;
+
+    // Останавливаем health checks
+    health_check_running_ = false;
+
+    io_context_.stop();
+    
+    // Ждем завершения всех потоков
+    if (server_thread_.joinable()) {
+        server_thread_.join();
+    }
+    
+    if (health_check_thread_.joinable()) {
+        health_check_thread_.join();
+    }
+
+    if (stats_updater_thread_.joinable()) {
+        stats_updater_thread_.join();
+    }
+
+    LOG_INFO("LoadBalancer stopped");
+}
+
 LoadBalancer::~LoadBalancer() {
     LoadBalancer::stop();
     DataBus::instance().unsubscribe(health_check_sub_);
@@ -532,13 +559,18 @@ std::shared_ptr<BackendNode> LoadBalancer::weighted_selection(const std::vector<
 }
 
 // Health checking implementation
-void LoadBalancer::start_health_checks(std::chrono::seconds interval) {
-    if (running_.exchange(true)) return;
+void LoadBalancer::start_health_checks() {
+    if (health_check_running_.exchange(true)) return;
 
-    health_check_thread_ = std::thread([this, interval]() {
-        while (running_.load()) {
+    health_check_thread_ = std::thread([this]() {
+        auto interval = std::chrono::seconds(Confparcer::SETTING<int>("HEALTHCHECK_TIMEOUT",15)); // или значение из конфигурации
+        while (health_check_running_.load()) {
             perform_health_checks();
-            std::this_thread::sleep_for(interval);
+            
+            // Таймаут с проверкой флага
+            for (int i = 0; i < interval.count() && health_check_running_.load(); ++i) {
+                std::this_thread::sleep_for(std::chrono::seconds(1));
+            }
         }
     });
 }
@@ -727,10 +759,9 @@ std::string LoadBalancer::strategy_to_string(RoutingStrategy strategy) {
         case RoutingStrategy::LEAST_CONNECTIONS: return "Least Connections";
         case RoutingStrategy::IP_HASH: return "IP Hash";
         case RoutingStrategy::WEIGHTED: return "Weighted";
-        default: [](){
+        default:
          VERIFY_NOT_REACHED();
          return "Unknown";
-        };
     }
 }
 

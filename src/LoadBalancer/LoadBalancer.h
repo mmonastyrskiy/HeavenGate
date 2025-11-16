@@ -104,7 +104,9 @@ private:
     int legit_clients_count_ = 0;
     int malicious_clients_count_ = 0;
     std::thread stats_updater_thread_;
+    std::thread health_check_thread_;
     std::atomic<bool> stats_updater_running_{false};
+    std::atomic<bool> health_check_running_{false};
     RoutingStrategy strategy_;
     std::atomic<bool> running_{false};
     
@@ -146,7 +148,7 @@ private:
     std::shared_ptr<BackendNode> weighted_selection(const std::vector<std::shared_ptr<BackendNode>>& backends);
     
     // Health checking
-    void start_health_checks(std::chrono::seconds interval = std::chrono::seconds(30));
+    void start_health_checks();
     void perform_health_checks();
     bool check_server_health(const std::shared_ptr<BackendNode>& server);
     
