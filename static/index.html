@@ -266,6 +266,116 @@
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
         }
 
+    /* Стили для таблицы с фиксированной шириной колонок */
+    .requests-table {
+        background-color: white;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    }
+
+    .requests-table table {
+        width: 100%;
+        border-collapse: collapse;
+        table-layout: fixed; /* Фиксированная ширина таблицы */
+    }
+
+    .requests-table th,
+    .requests-table td {
+        padding: 15px;
+        text-align: left;
+        border-bottom: 1px solid #eee;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .requests-table th {
+        background-color: #f8f9fa;
+        font-weight: 600;
+        color: var(--dark-color);
+        position: sticky;
+        top: 0;
+    }
+
+    /* Фиксированные ширины для колонок */
+    .requests-table th:nth-child(1), /* Статус */
+    .requests-table td:nth-child(1) {
+        width: 120px; /* Фиксированная ширина для статуса */
+        min-width: 120px;
+        max-width: 120px;
+    }
+
+    .requests-table th:nth-child(2), /* IP-адрес */
+    .requests-table td:nth-child(2) {
+        width: 150px; /* Фиксированная ширина для IP */
+        min-width: 150px;
+        max-width: 150px;
+    }
+
+    .requests-table th:nth-child(3), /* Путь */
+    .requests-table td:nth-child(3) {
+        width: 300px; /* Фиксированная ширина для пути */
+        min-width: 300px;
+        max-width: 300px;
+    }
+
+    .requests-table th:nth-child(4), /* Время получения */
+    .requests-table td:nth-child(4) {
+        width: 200px; /* Фиксированная ширина для времени */
+        min-width: 200px;
+        max-width: 200px;
+    }
+
+    /* Стили для пустой таблицы */
+    .empty-table {
+        text-align: center;
+        padding: 40px 20px;
+        color: #7f8c8d;
+    }
+
+    .empty-table i {
+        font-size: 3rem;
+        margin-bottom: 15px;
+        opacity: 0.5;
+    }
+
+    .empty-table p {
+        margin: 0;
+        font-size: 1rem;
+    }
+
+    /* Адаптивность для мобильных устройств */
+    @media (max-width: 768px) {
+        .requests-table th:nth-child(1),
+        .requests-table td:nth-child(1) {
+            width: 100px;
+            min-width: 100px;
+            max-width: 100px;
+        }
+
+        .requests-table th:nth-child(2),
+        .requests-table td:nth-child(2) {
+            width: 120px;
+            min-width: 120px;
+            max-width: 120px;
+        }
+
+        .requests-table th:nth-child(3),
+        .requests-table td:nth-child(3) {
+            width: 200px;
+            min-width: 200px;
+            max-width: 200px;
+        }
+
+        .requests-table th:nth-child(4),
+        .requests-table td:nth-child(4) {
+            width: 150px;
+            min-width: 150px;
+            max-width: 150px;
+        }
+    }
+
         /* Стили страницы пользователей */
         .users-table-container {
             background-color: white;
@@ -692,24 +802,33 @@
             </div>
 
             <!-- Таблица последних запросов -->
-            <div class="requests-table">
-                <h3 style="padding: 20px 20px 0;">Последние запросы</h3>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Статус</th>
-                            <th>IP-адрес</th>
-                            <th>Путь</th>
-                            <th>Время получения</th>
-                        </tr>
-                    </thead>
-                    <tbody id="requests-table-body">
-                        <!-- Данные будут заполнены через JavaScript -->
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
+        <div class="requests-table">
+    <h3 style="padding: 20px 20px 0;">Последние запросы</h3>
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Статус</th>
+                    <th>IP-адрес</th>
+                    <th>Путь</th>
+                    <th>Время получения</th>
+                </tr>
+            </thead>
+            <tbody id="requests-table-body">
+                <!-- Данные будут заполнены через JavaScript -->
+                <tr id="empty-table-row" style="display: none;">
+                    <td colspan="4">
+                        <div class="empty-table">
+                            <i class="fas fa-inbox"></i>
+                            <p>Нет данных для отображения</p>
+                            <small>Запросы появятся здесь, когда система начнет их получать</small>
+                        </div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
         <!-- Страница пользователей -->
         <div id="users-page" class="page-content">
             <div class="page-title">
@@ -790,315 +909,633 @@
     </div>
 
     <script>
-        // ==================== ОБЩИЕ ФУНКЦИИ ====================
+        // ==================== ОБЩИЕ ФУНКЦИИ И ПЕРЕМЕННЫЕ ====================
 
-        // Управление навигацией
-        function navigateToPage(pageId) {
-            // Скрываем все страницы
-            document.querySelectorAll('.page-content').forEach(page => {
-                page.classList.remove('active');
-            });
-            
-            // Показываем выбранную страницу
-            document.getElementById(pageId + '-page').classList.add('active');
-            
-            // Обновляем заголовок
-            const pageTitles = {
-                'home': 'Главная',
-                'users': 'Пользователи',
-                'agents': 'Агенты',
-                'rules': 'Правила',
-                'settings': 'Настройки'
-            };
-            document.getElementById('page-title').textContent = pageTitles[pageId];
-            
-            // Обновляем активную ссылку в навигации
-            document.querySelectorAll('.nav-link').forEach(link => {
-                link.classList.remove('active');
-            });
-            document.querySelector(`.nav-link[data-page="${pageId}"]`).classList.add('active');
-            
-            // Обновляем URL в браузере
-            history.pushState(null, null, `#${pageId}`);
-        }
+// Глобальные переменные
+let eventSource;
+let reconnectTimeout;
+let activityChart;
+const maxReconnectDelay = 10000;
 
-        // Обработчики для навигации
-        document.querySelectorAll('.nav-link').forEach(link => {
-            link.addEventListener('click', function(e) {
-                e.preventDefault();
-                const pageId = this.getAttribute('data-page');
-                navigateToPage(pageId);
-            });
-        });
+// Данные приложения
+let requests = [];
+let clients = new Map();
+let agents = {
+    realServers: 0,
+    honeypots: 0
+};
 
-        // Обработка изменения хэша в URL
-        window.addEventListener('hashchange', function() {
-            const hash = window.location.hash.substring(1) || 'home';
-            navigateToPage(hash);
-        });
+// Тестовые данные для страницы пользователей
+const testClients = [
+    { ip: "192.168.1.100", country: "us", isMalicious: false, serverId: "srv-web-01" },
+    { ip: "10.0.0.50", country: "ru", isMalicious: true, serverId: "srv-honeypot-02" },
+    { ip: "172.16.0.25", country: "cn", isMalicious: false, serverId: "srv-api-03" },
+    { ip: "203.0.113.45", country: "de", isMalicious: true, serverId: "srv-honeypot-01" },
+    { ip: "198.51.100.123", country: "fr", isMalicious: false, serverId: "srv-web-02" },
+    { ip: "203.0.113.67", country: "uk", isMalicious: false, serverId: "srv-db-01" },
+    { ip: "192.0.2.189", country: "jp", isMalicious: true, serverId: "srv-honeypot-03" },
+    { ip: "198.51.100.204", country: "br", isMalicious: false, serverId: "srv-web-03" },
+    { ip: "203.0.113.12", country: "us", isMalicious: true, serverId: "srv-honeypot-04" },
+    { ip: "192.0.2.55", country: "ru", isMalicious: false, serverId: "srv-api-02" }
+];
 
-        // Инициализация начальной страницы
-        const initialPage = window.location.hash.substring(1) || 'home';
-        navigateToPage(initialPage);
+const countryNames = {
+    us: "США",
+    ru: "Россия",
+    cn: "Китай",
+    de: "Германия",
+    fr: "Франция",
+    uk: "Великобритания",
+    jp: "Япония",
+    br: "Бразилия"
+};
 
-        // ==================== ГЛАВНАЯ СТРАНИЦА ====================
+// Данные для графика
+let chartData = {
+    labels: [],
+    legit: [],
+    malicious: []
+};
 
-        // Код для главной страницы (графики, статистика, SSE)
-        let eventSource;
-        let reconnectTimeout;
-        const maxReconnectDelay = 10000;
+// ==================== УПРАВЛЕНИЕ НАВИГАЦИЕЙ ====================
 
-        // Инициализация графика
-        const ctx = document.getElementById('activity-chart').getContext('2d');
-        const activityChart = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: [],
-                datasets: [
-                    {
-                        label: 'Легитимные клиенты',
-                        data: [],
-                        borderColor: '#2ecc71',
-                        backgroundColor: 'rgba(46, 204, 113, 0.1)',
-                        tension: 0.4,
-                        fill: true,
-                        borderWidth: 2
-                    },
-                    {
-                        label: 'Вредоносные клиенты',
-                        data: [],
-                        borderColor: '#e74c3c',
-                        backgroundColor: 'rgba(231, 76, 60, 0.1)',
-                        tension: 0.4,
-                        fill: true,
-                        borderWidth: 2
-                    }
-                ]
+function navigateToPage(pageId) {
+    // Скрываем все страницы
+    document.querySelectorAll('.page-content').forEach(page => {
+        page.classList.remove('active');
+    });
+    
+    // Показываем выбранную страницу
+    document.getElementById(pageId + '-page').classList.add('active');
+    
+    // Обновляем заголовок
+    const pageTitles = {
+        'home': 'Главная',
+        'users': 'Пользователи',
+        'agents': 'Агенты',
+        'rules': 'Правила',
+        'settings': 'Настройки'
+    };
+    document.getElementById('page-title').textContent = pageTitles[pageId];
+    
+    // Обновляем активную ссылку в навигации
+    document.querySelectorAll('.nav-link').forEach(link => {
+        link.classList.remove('active');
+    });
+    document.querySelector(`.nav-link[data-page="${pageId}"]`).classList.add('active');
+    
+    // Обновляем URL в браузере
+    history.pushState(null, null, `#${pageId}`);
+    
+    // Инициализируем специфичные для страницы функции
+    initializePage(pageId);
+}
+
+function initializePage(pageId) {
+    switch(pageId) {
+        case 'home':
+            initializeHomePage();
+            break;
+        case 'users':
+            initializeUsersPage();
+            break;
+        case 'agents':
+            // Инициализация страницы агентов
+            break;
+        case 'rules':
+            // Инициализация страницы правил
+            break;
+        case 'settings':
+            // Инициализация страницы настроек
+            break;
+    }
+}
+
+// ==================== ГЛАВНАЯ СТРАНИЦА ====================
+
+function initializeHomePage() {
+    // Инициализируем график если он еще не создан
+    if (!activityChart) {
+        initializeChart();
+    }
+    
+    // Подключаем SSE если еще не подключены
+    if (!eventSource || eventSource.readyState === EventSource.CLOSED) {
+        connectSSE();
+    }
+    
+    // Обновляем таблицу запросов
+    updateRequestsTable();
+}
+
+function initializeChart() {
+    const ctx = document.getElementById('activity-chart').getContext('2d');
+    activityChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: generateTimeLabels(),
+            datasets: [
+                {
+                    label: 'Легитимные клиенты',
+                    data: Array(24).fill(0),
+                    borderColor: '#2ecc71',
+                    backgroundColor: 'rgba(46, 204, 113, 0.1)',
+                    tension: 0.4,
+                    fill: true,
+                    borderWidth: 2
+                },
+                {
+                    label: 'Вредоносные клиенты',
+                    data: Array(24).fill(0),
+                    borderColor: '#e74c3c',
+                    backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                    tension: 0.4,
+                    fill: true,
+                    borderWidth: 2
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'top',
+                }
             },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        position: 'top',
-                    }
-                },
-                scales: {
-                    x: {
+            scales: {
+                x: {
+                    display: true,
+                    title: {
                         display: true,
-                        title: {
-                            display: true,
-                            text: 'Время'
-                        },
-                        grid: {
-                            display: true
-                        }
+                        text: 'Время'
                     },
-                    y: {
-                        display: true,
-                        title: {
-                            display: true,
-                            text: 'Количество клиентов'
-                        },
-                        beginAtZero: true,
-                        suggestedMin: 0,
-                        suggestedMax: 10,
-                        grid: {
-                            display: true
-                        },
-                        ticks: {
-                            stepSize: 1
-                        }
+                    grid: {
+                        display: true
                     }
                 },
-                animation: {
-                    duration: 0
-                },
-                elements: {
-                    point: {
-                        radius: 0
+                y: {
+                    display: true,
+                    title: {
+                        display: true,
+                        text: 'Количество клиентов'
+                    },
+                    beginAtZero: true,
+                    suggestedMin: 0,
+                    suggestedMax: 10,
+                    grid: {
+                        display: true
+                    },
+                    ticks: {
+                        stepSize: 1
                     }
                 }
+            },
+            animation: {
+                duration: 0
+            },
+            elements: {
+                point: {
+                    radius: 0
+                }
             }
-        });
+        }
+    });
+}
 
-        // Остальной код для главной страницы (SSE, обновление статистики и т.д.)
-        // ... (код из предыдущих примеров)
+function generateTimeLabels() {
+    const labels = [];
+    const now = new Date();
+    
+    for (let i = 23; i >= 0; i--) {
+        const time = new Date(now);
+        time.setHours(now.getHours() - i);
+        labels.push(time.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'}));
+    }
+    
+    return labels;
+}
 
-        // ==================== СТРАНИЦА ПОЛЬЗОВАТЕЛЕЙ ====================
+// ==================== SSE СОЕДИНЕНИЕ ====================
 
-        // Тестовые данные клиентов
-        const testClients = [
-            { ip: "192.168.1.100", country: "us", isMalicious: false, serverId: "srv-web-01" },
-            { ip: "10.0.0.50", country: "ru", isMalicious: true, serverId: "srv-honeypot-02" },
-            { ip: "172.16.0.25", country: "cn", isMalicious: false, serverId: "srv-api-03" },
-            { ip: "203.0.113.45", country: "de", isMalicious: true, serverId: "srv-honeypot-01" },
-            { ip: "198.51.100.123", country: "fr", isMalicious: false, serverId: "srv-web-02" },
-            { ip: "203.0.113.67", country: "uk", isMalicious: false, serverId: "srv-db-01" },
-            { ip: "192.0.2.189", country: "jp", isMalicious: true, serverId: "srv-honeypot-03" },
-            { ip: "198.51.100.204", country: "br", isMalicious: false, serverId: "srv-web-03" },
-            { ip: "203.0.113.12", country: "us", isMalicious: true, serverId: "srv-honeypot-04" },
-            { ip: "192.0.2.55", country: "ru", isMalicious: false, serverId: "srv-api-02" }
-        ];
-
-        const countryNames = {
-            us: "США",
-            ru: "Россия",
-            cn: "Китай",
-            de: "Германия",
-            fr: "Франция",
-            uk: "Великобритания",
-            jp: "Япония",
-            br: "Бразилия"
+function connectSSE() {
+    try {
+        eventSource = new EventSource('/events');
+        
+        eventSource.onopen = function(event) {
+            console.log('SSE connection opened');
+            updateConnectionStatus(true);
+            clearTimeout(reconnectTimeout);
         };
 
-        // Функция для отображения клиентов в таблице
-        function renderClientsTable(clients) {
-            const tableBody = document.getElementById('users-table-body');
-            tableBody.innerHTML = '';
-
-            clients.forEach(client => {
-                const row = document.createElement('tr');
-                const statusClass = client.isMalicious ? 'status-malicious' : 'status-legit';
-                const statusText = client.isMalicious ? 'Вредоносный' : 'Легитимный';
-                const countryName = countryNames[client.country] || client.country;
-
-                row.innerHTML = `
-                    <td>
-                        <a href="/client/${client.ip}" class="ip-link" title="Подробная информация о клиенте">
-                            ${client.ip}
-                        </a>
-                    </td>
-                    <td>
-                        <span class="flag flag-${client.country}" title="${countryName}"></span>
-                        ${countryName}
-                    </td>
-                    <td>
-                        <span class="status-badge ${statusClass}">${statusText}</span>
-                    </td>
-                    <td>
-                        <span class="server-id">${client.serverId}</span>
-                    </td>
-                    <td>
-                        <div class="context-menu">
-                            <button class="context-menu-btn" onclick="toggleContextMenu(this)">
-                                <i class="fas fa-ellipsis-v"></i>
-                            </button>
-                            <div class="context-menu-content">
-                                <a href="/client/${client.ip}" class="context-menu-item">
-                                    <i class="fas fa-info-circle"></i>Подробности
-                                </a>
-                                <a href="#" class="context-menu-item" onclick="blockClient('${client.ip}')">
-                                    <i class="fas fa-ban"></i>Заблокировать
-                                </a>
-                                <a href="#" class="context-menu-item" onclick="analyzeClient('${client.ip}')">
-                                    <i class="fas fa-search"></i>Проанализировать
-                                </a>
-                            </div>
-                        </div>
-                    </td>
-                `;
-
-                tableBody.appendChild(row);
-            });
-
-            document.getElementById('total-clients').textContent = clients.length;
-        }
-
-        // Функция для переключения контекстного меню
-        function toggleContextMenu(button) {
-            document.querySelectorAll('.context-menu-content').forEach(menu => {
-                menu.classList.remove('show');
-            });
-
-            const menu = button.nextElementSibling;
-            menu.classList.toggle('show');
-
-            setTimeout(() => {
-                const closeMenu = (e) => {
-                    if (!menu.contains(e.target) && e.target !== button) {
-                        menu.classList.remove('show');
-                        document.removeEventListener('click', closeMenu);
-                    }
-                };
-                document.addEventListener('click', closeMenu);
-            });
-        }
-
-        // Функции для действий контекстного меню
-        function blockClient(ip) {
-            alert(`Блокировка клиента ${ip} - функционал в разработке`);
-            document.querySelectorAll('.context-menu-content').forEach(menu => {
-                menu.classList.remove('show');
-            });
-        }
-
-        function analyzeClient(ip) {
-            alert(`Анализ клиента ${ip} - функционал в разработке`);
-            document.querySelectorAll('.context-menu-content').forEach(menu => {
-                menu.classList.remove('show');
-            });
-        }
-
-        // Функция поиска клиентов
-        function searchClients(query) {
-            const filteredClients = testClients.filter(client => {
-                const searchLower = query.toLowerCase();
-                return client.ip.toLowerCase().includes(searchLower) ||
-                       countryNames[client.country].toLowerCase().includes(searchLower) ||
-                       client.serverId.toLowerCase().includes(searchLower);
-            });
-            renderClientsTable(filteredClients);
-        }
-
-        // Обработчики для страницы пользователей
-        document.getElementById('search-input').addEventListener('input', function(e) {
-            searchClients(e.target.value);
-        });
-
-        document.getElementById('refresh-btn').addEventListener('click', function() {
-            renderClientsTable(testClients);
-            document.getElementById('search-input').value = '';
-            alert('Данные обновлены');
-        });
-
-        // Обработка ссылок на детальную информацию о клиенте
-        document.addEventListener('click', function(e) {
-            if (e.target.classList.contains('ip-link')) {
-                e.preventDefault();
-                const ip = e.target.textContent;
-                alert(`Подробная информация о клиенте ${ip} - страница в разработке`);
+        eventSource.onmessage = function(event) {
+            try {
+                const data = JSON.parse(event.data);
+                handleSSEMessage(data);
+            } catch (error) {
+                console.error('Error parsing SSE message:', error);
             }
-        });
+        };
 
-        // ==================== ОБЩИЕ ОБРАБОТЧИКИ ====================
-
-        // Обработчики для выпадающих меню
-        document.getElementById('notification-dropdown').addEventListener('click', function(e) {
-            e.stopPropagation();
-            document.getElementById('notification-menu').classList.toggle('show');
-        });
-
-        document.getElementById('user-dropdown').addEventListener('click', function(e) {
-            e.stopPropagation();
-            document.getElementById('user-menu').classList.toggle('show');
-        });
-
-        // Закрытие выпадающих меню при клике вне их
-        document.addEventListener('click', function() {
-            document.querySelectorAll('.dropdown-content').forEach(menu => {
-                menu.classList.remove('show');
-            });
-        });
-
-        // Инициализация при загрузке страницы
-        document.addEventListener('DOMContentLoaded', function() {
-            // Инициализируем страницу пользователей
-            renderClientsTable(testClients);
+        eventSource.onerror = function(event) {
+            console.error('SSE error:', event);
+            updateConnectionStatus(false);
             
-            // Инициализируем график на главной странице
-            // updateChartData(); // Раскомментировать когда добавите функцию
+            if (eventSource) {
+                eventSource.close();
+            }
+            
+            attemptReconnect();
+        };
+
+    } catch (error) {
+        console.error('Error creating SSE connection:', error);
+        attemptReconnect();
+    }
+}
+
+function attemptReconnect(delay = 1000) {
+    console.log(`Attempting to reconnect in ${delay}ms...`);
+    
+    clearTimeout(reconnectTimeout);
+    reconnectTimeout = setTimeout(() => {
+        connectSSE();
+    }, Math.min(delay * 2, maxReconnectDelay));
+}
+
+function handleSSEMessage(data) {
+    switch (data.type) {
+        case 'initial':
+            console.log('Received initial data');
+            requests = data.data.requests || [];
+            agents = data.data.agents || agents;
+            updateAllStats(data.data);
+            updateRequestsTable();
+            break;
+            
+        case 'new_request':
+            console.log('New request received:', data.data.request);
+            requests.push(data.data.request);
+            updateAllStats(data.data.stats);
+            addNewRequestToTable(data.data.request);
+            break;
+            
+        case 'agents_update':
+            console.log('Agents update received:', data.data);
+            agents = data.data.agents;
+            updateAgentsStats();
+            break;
+            
+        case 'ping':
+            break;
+            
+        default:
+            console.log('Unknown message type:', data.type);
+    }
+}
+
+function updateConnectionStatus(connected) {
+    let statusElement = document.getElementById('connection-status');
+    if (!statusElement) {
+        statusElement = document.createElement('div');
+        statusElement.id = 'connection-status';
+        statusElement.style.marginLeft = '20px';
+        statusElement.style.fontSize = '0.9rem';
+        statusElement.style.fontWeight = 'bold';
+        document.querySelector('.header-left').appendChild(statusElement);
+    }
+    
+    statusElement.textContent = connected ? '🟢 Connected' : '🔴 Disconnected';
+    statusElement.style.color = connected ? '#2ecc71' : '#e74c3c';
+}
+
+// ==================== ОБНОВЛЕНИЕ СТАТИСТИКИ ====================
+
+function updateAllStats(stats) {
+    updateRequestsStats(stats);
+    updateClientsStats(stats);
+    updateAgentsStats(stats);
+}
+
+function updateRequestsStats(stats) {
+    document.getElementById('total-requests').textContent = stats?.totalRequests || requests.length;
+}
+
+function updateClientsStats(stats) {
+    document.getElementById('legit-clients').textContent = stats?.legitClients || 0;
+    document.getElementById('malicious-clients').textContent = stats?.maliciousClients || 0;
+}
+
+function updateAgentsStats() {
+    document.getElementById('real-servers').textContent = agents.realServers || 0;
+    document.getElementById('honeypots').textContent = agents.honeypots || 0;
+}
+
+// ==================== ТАБЛИЦА ЗАПРОСОВ НА ГЛАВНОЙ СТРАНИЦЕ ====================
+
+function showEmptyTable() {
+    const tableBody = document.getElementById('requests-table-body');
+    tableBody.innerHTML = `
+        <tr>
+            <td colspan="4">
+                <div class="empty-table">
+                    <i class="fas fa-inbox"></i>
+                    <p>Нет данных для отображения</p>
+                    <small>Запросы появятся здесь, когда система начнет их получать</small>
+                </div>
+            </td>
+        </tr>
+    `;
+}
+
+function updateRequestsTable() {
+    const tableBody = document.getElementById('requests-table-body');
+    
+    if (requests.length === 0) {
+        showEmptyTable();
+        return;
+    }
+    
+    tableBody.innerHTML = '';
+    
+    // Показываем последние 20 запросов
+    const recentRequests = requests.slice(-20).reverse();
+    
+    recentRequests.forEach(request => {
+        addRequestToTable(request, tableBody);
+    });
+}
+
+function addNewRequestToTable(request) {
+    const tableBody = document.getElementById('requests-table-body');
+    
+    // Если таблица пустая, очищаем ее
+    if (tableBody.querySelector('.empty-table')) {
+        tableBody.innerHTML = '';
+    }
+    
+    // Добавляем новую строку в начало таблицы
+    addRequestToTable(request, tableBody);
+    
+    // Удаляем старые строки если больше 20
+    const rows = tableBody.getElementsByTagName('tr');
+    if (rows.length > 20) {
+        tableBody.removeChild(rows[rows.length - 1]);
+    }
+    
+    // Добавляем анимацию подсветки новой строки
+    const newRow = tableBody.firstChild;
+    newRow.style.backgroundColor = 'rgba(52, 152, 219, 0.1)';
+    setTimeout(() => {
+        newRow.style.backgroundColor = '';
+    }, 2000);
+}
+
+function addRequestToTable(request, tableBody) {
+    const row = document.createElement('tr');
+    const statusClass = request.isMalicious ? 'status-malicious' : 'status-legit';
+    const statusText = request.isMalicious ? '🚨 MALICIOUS' : '✅ LEGIT';
+    const receivedAt = new Date(request.receivedAt).toLocaleString();
+    
+    row.innerHTML = `
+        <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+        <td>${request.clientIP}</td>
+        <td>${request.path}</td>
+        <td>${receivedAt}</td>
+    `;
+    
+    tableBody.appendChild(row);
+}
+
+// ==================== СТРАНИЦА ПОЛЬЗОВАТЕЛЕЙ ====================
+
+function initializeUsersPage() {
+    renderClientsTable(testClients);
+}
+
+function renderClientsTable(clients) {
+    const tableBody = document.getElementById('users-table-body');
+    tableBody.innerHTML = '';
+
+    clients.forEach(client => {
+        const row = document.createElement('tr');
+        const statusClass = client.isMalicious ? 'status-malicious' : 'status-legit';
+        const statusText = client.isMalicious ? 'Вредоносный' : 'Легитимный';
+        const countryName = countryNames[client.country] || client.country;
+
+        row.innerHTML = `
+            <td>
+                <a href="/client/${client.ip}" class="ip-link" title="Подробная информация о клиенте">
+                    ${client.ip}
+                </a>
+            </td>
+            <td>
+                <span class="flag flag-${client.country}" title="${countryName}"></span>
+                ${countryName}
+            </td>
+            <td>
+                <span class="status-badge ${statusClass}">${statusText}</span>
+            </td>
+            <td>
+                <span class="server-id">${client.serverId}</span>
+            </td>
+            <td>
+                <div class="context-menu">
+                    <button class="context-menu-btn" onclick="toggleContextMenu(this)">
+                        <i class="fas fa-ellipsis-v"></i>
+                    </button>
+                    <div class="context-menu-content">
+                        <a href="/client/${client.ip}" class="context-menu-item">
+                            <i class="fas fa-info-circle"></i>Подробности
+                        </a>
+                        <a href="#" class="context-menu-item" onclick="blockClient('${client.ip}')">
+                            <i class="fas fa-ban"></i>Заблокировать
+                        </a>
+                        <a href="#" class="context-menu-item" onclick="analyzeClient('${client.ip}')">
+                            <i class="fas fa-search"></i>Проанализировать
+                        </a>
+                    </div>
+                </div>
+            </td>
+        `;
+
+        tableBody.appendChild(row);
+    });
+
+    document.getElementById('total-clients').textContent = clients.length;
+}
+
+function toggleContextMenu(button) {
+    // Закрываем все открытые меню
+    document.querySelectorAll('.context-menu-content').forEach(menu => {
+        menu.classList.remove('show');
+    });
+
+    // Открываем текущее меню
+    const menu = button.nextElementSibling;
+    menu.classList.toggle('show');
+
+    // Закрываем меню при клике вне его
+    setTimeout(() => {
+        const closeMenu = (e) => {
+            if (!menu.contains(e.target) && e.target !== button) {
+                menu.classList.remove('show');
+                document.removeEventListener('click', closeMenu);
+            }
+        };
+        document.addEventListener('click', closeMenu);
+    });
+}
+
+function blockClient(ip) {
+    alert(`Блокировка клиента ${ip} - функционал в разработке`);
+    document.querySelectorAll('.context-menu-content').forEach(menu => {
+        menu.classList.remove('show');
+    });
+}
+
+function analyzeClient(ip) {
+    alert(`Анализ клиента ${ip} - функционал в разработке`);
+    document.querySelectorAll('.context-menu-content').forEach(menu => {
+        menu.classList.remove('show');
+    });
+}
+
+function searchClients(query) {
+    const filteredClients = testClients.filter(client => {
+        const searchLower = query.toLowerCase();
+        return client.ip.toLowerCase().includes(searchLower) ||
+               countryNames[client.country].toLowerCase().includes(searchLower) ||
+               client.serverId.toLowerCase().includes(searchLower);
+    });
+    renderClientsTable(filteredClients);
+}
+
+// ==================== ОБРАБОТЧИКИ СОБЫТИЙ ====================
+
+function setupEventListeners() {
+    // Навигация
+    document.querySelectorAll('.nav-link').forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            const pageId = this.getAttribute('data-page');
+            navigateToPage(pageId);
         });
-    </script>
+    });
+
+    // Выпадающие меню
+    document.getElementById('notification-dropdown').addEventListener('click', function(e) {
+        e.stopPropagation();
+        document.getElementById('notification-menu').classList.toggle('show');
+    });
+
+    document.getElementById('user-dropdown').addEventListener('click', function(e) {
+        e.stopPropagation();
+        document.getElementById('user-menu').classList.toggle('show');
+    });
+
+    // Закрытие выпадающих меню при клике вне их
+    document.addEventListener('click', function() {
+        document.querySelectorAll('.dropdown-content').forEach(menu => {
+            menu.classList.remove('show');
+        });
+    });
+
+    // Поиск на странице пользователей
+    document.getElementById('search-input').addEventListener('input', function(e) {
+        searchClients(e.target.value);
+    });
+
+    // Кнопка обновления на странице пользователей
+    document.getElementById('refresh-btn').addEventListener('click', function() {
+        renderClientsTable(testClients);
+        document.getElementById('search-input').value = '';
+        alert('Данные обновлены');
+    });
+
+    // Обработка ссылок на детальную информацию о клиенте
+    document.addEventListener('click', function(e) {
+        if (e.target.classList.contains('ip-link')) {
+            e.preventDefault();
+            const ip = e.target.textContent;
+            alert(`Подробная информация о клиенте ${ip} - страница в разработке`);
+        }
+    });
+
+    // Обработка изменения хэша в URL
+    window.addEventListener('hashchange', function() {
+        const hash = window.location.hash.substring(1) || 'home';
+        navigateToPage(hash);
+    });
+
+    // Обработка перед закрытием страницы
+    window.addEventListener('beforeunload', function() {
+        if (eventSource) {
+            eventSource.close();
+        }
+        clearTimeout(reconnectTimeout);
+    });
+}
+
+// ==================== ДЕМО-ДАННЫЕ ДЛЯ ТЕСТИРОВАНИЯ ====================
+
+function initializeDemoData() {
+    // Добавляем демо-данные для главной страницы
+    setTimeout(() => {
+        const demoRequests = [
+            {
+                clientIP: '192.168.1.100',
+                path: '/api/login',
+                isMalicious: false,
+                receivedAt: new Date()
+            },
+            {
+                clientIP: '10.0.0.50',
+                path: '/admin/panel',
+                isMalicious: true,
+                receivedAt: new Date(Date.now() - 300000)
+            },
+            {
+                clientIP: '172.16.0.25',
+                path: '/api/data',
+                isMalicious: false,
+                receivedAt: new Date(Date.now() - 600000)
+            }
+        ];
+        
+        requests = demoRequests;
+        updateRequestsTable();
+        
+        // Обновляем статистику
+        updateAllStats({
+            totalRequests: demoRequests.length,
+            legitClients: 2,
+            maliciousClients: 1,
+            agents: { realServers: 3, honeypots: 5 }
+        });
+    }, 1000);
+}
+
+// ==================== ИНИЦИАЛИЗАЦИЯ ПРИЛОЖЕНИЯ ====================
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Настраиваем обработчики событий
+    setupEventListeners();
+    
+    // Инициализируем демо-данные
+    initializeDemoData();
+    
+    // Загружаем начальную страницу
+    const initialPage = window.location.hash.substring(1) || 'home';
+    navigateToPage(initialPage);
+});
+
+// ==================== ГЛОБАЛЬНЫЕ ФУНКЦИИ ДЛЯ HTML ====================
+
+// Делаем функции доступными глобально для обработчиков в HTML
+window.toggleContextMenu = toggleContextMenu;
+window.blockClient = blockClient;
+window.analyzeClient = analyzeClient;
+</script>
 </body>
 </html>
