@@ -85,7 +85,3 @@ void geo2ip::closeDB() {
         LOG_DEBUG("GeoIP database closed");
     }
 }
-
-geo2ip::~geo2ip() {
-    closeDB();
-}

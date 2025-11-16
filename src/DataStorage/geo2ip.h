@@ -11,8 +11,10 @@ public:
     
     // Constructors
     geo2ip();
-    explicit geo2ip(const std::string& db_path);
-    ~geo2ip();
+    geo2ip(const std::string& db_path);
+ ~geo2ip() {
+    closeDB();
+}
     
     // Public methods
     bool openDB(const std::string& db_path = DEFAULT_DB_PATH);
