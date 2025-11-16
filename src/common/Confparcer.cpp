@@ -99,30 +99,28 @@ std::string Confparcer::get(const std::string& key, int* error_code = nullptr) c
         return "";
     }
 }
-std::string Confparcer::getconfig() const{
-const char* env;
-LOG_DEBUG("LOADING ENV");
-env = std::getenv(HG_ENVKEY);
-if (env == nullptr){
-    LOG_WARN("Failed to load ENV");
-    #ifndef KDEBUG
-
-std::filesystem::path base = "/var/HeavenGate"; //TODO: Has to be created //TODO: CHANGE ON RELEASE
-    #else
-    std::filesystem::path base = "/root/Documents/HeavenGate/";
-    #endif
-    LOG_DEBUG("LOADING base");
-}
-else{
-LOG_INFO("USING ENV PATH");
-std::filesystem::path base = env;
-}
-std::filesystem::path config = base += "config/";
-config += "default.ini";
-LOG_DEBUG("LOADING path");
-return config.string();
-
-
+std::string Confparcer::getconfig() const {
+    LOG_DEBUG("LOADING ENV");
+    const char* env = std::getenv(HG_ENVKEY);
+    
+    std::filesystem::path base;
+    
+    if (env == nullptr) {
+        LOG_WARN("Failed to load ENV");
+        // Production path (uncomment for release)
+        // base = "/var/HeavenGate/";
+        
+        // Development path
+        base = "/root/Documents/HeavenGate/";
+        LOG_DEBUG("LOADING base");
+    } else {
+        LOG_INFO("USING ENV PATH");
+        base = env;
+    }
+    
+    std::filesystem::path config = base / "config" / "default.ini";
+    LOG_DEBUG("LOADING path");
+    return config.string();
 }
 Confparcer::Confparcer(){
     parce();
