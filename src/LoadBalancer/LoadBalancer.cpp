@@ -220,9 +220,18 @@ void LoadBalancer::handle_accept(ClientConnection::Ptr client, const asio::error
 }
 
 void LoadBalancer::handle_client_request(ClientConnection::Ptr client) {
-    read_from_client(client);
+    // Check if client already has assigned backend
     auto assigned_backend = get_assigned_backend(client->client_ip);
-    proxy_to_backend(client,assigned_backend);
+    
+    if (!assigned_backend) {
+        // For initial request, send to classifier first
+        LOG_INFO("New request from new client");
+        read_from_client(client);
+    } else {
+        // Client already classified, proxy directly to assigned backend
+        proxy_to_backend(client, assigned_backend);
+        LOG_INFO("New request from assigned client");
+    }
 }
 
 void LoadBalancer::read_from_client(ClientConnection::Ptr client) {
@@ -792,6 +801,7 @@ void LoadBalancer::start_stats_updater(std::chrono::seconds interval) {
         while (stats_updater_running_.load()) {
             // Периодически обновляем статистику
             updateClientsStats();
+            DashboardAPI::the().callAgentChange(real_backends_.size(), honeypot_backends_.size());
             
             // Используем таймаут с проверкой флага
             for (int i = 0; i < interval.count() && stats_updater_running_.load(); ++i) {

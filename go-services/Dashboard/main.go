@@ -38,7 +38,7 @@ type SSEClient struct {
 var (
 	requests   []BalancerRequest
 	clients    = make(map[string]*ClientInfo)
-	agents     = AgentsInfo{RealServers: 3, Honeypots: 5}
+	agents     = AgentsInfo{}
 	mu         sync.Mutex
 	sseClients = make(map[*SSEClient]bool)
 	sseMutex   sync.Mutex
