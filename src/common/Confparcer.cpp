@@ -23,12 +23,14 @@ Confparcer& Confparcer::the() {
 
 int Confparcer::parce() {
     std::string path = getconfig();
+    LOG_DEBUG("Got config file " + path);
     std::ifstream cfile(path); 
     
     if (!cfile.is_open()) {
         LOG_FATAL("Failed to open config file, please check the path");
         return ErrorCodes::CONFIG_NOT_OPENED;
     }
+    LOG_DEBUG("Opened config file " + path);
     
     std::string line;
     int line_num = 1;
@@ -55,6 +57,8 @@ int Confparcer::parce() {
         // Extract key and value
         std::string key = line.substr(0, div);
         std::string value = line.substr(div + 1);
+
+        LOG_DEBUG("Got option " + key + "with value " + value);
         
         // Trim whitespace from key and value
         key.erase(0, key.find_first_not_of(" \t"));
