@@ -124,7 +124,6 @@ private:
     asio::io_context io_context_;
     asio::ip::tcp::acceptor acceptor_;
     std::thread server_thread_;
-    std::thread health_check_thread_;
     
     // DataBus subscriptions
     SubscriptionId health_check_sub_;
