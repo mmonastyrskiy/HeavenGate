@@ -141,32 +141,6 @@ void LoadBalancer::start(int port) {
     } catch (const std::exception& e) {
         LOG_FATAL("Failed to start LoadBalancer: " + std::string(e.what()));
         running_ = false;
-    }
-}
-
-void LoadBalancer::start(int port) {
-    if (running_.exchange(true)) return;
-
-    try {
-        asio::ip::tcp::endpoint endpoint(asio::ip::tcp::v4(), port);
-        acceptor_.open(endpoint.protocol());
-        acceptor_.set_option(asio::ip::tcp::acceptor::reuse_address(true));
-        acceptor_.bind(endpoint);
-        acceptor_.listen();
-
-        LOG_INFO("LoadBalancer started on port " + std::to_string(port));
-
-        server_thread_ = std::thread([this]() {
-            start_accept();
-            io_context_.run();
-        });
-
-        start_health_checks();
-        start_stats_updater(std::chrono::seconds(30)); // Обновляем статистику каждые 30 секунд
-
-    } catch (const std::exception& e) {
-        LOG_FATAL("Failed to start LoadBalancer: " + std::string(e.what()));
-        running_ = false;
         stats_updater_running_ = false;
     }
 }
