@@ -71,8 +71,8 @@ std::string DashboardAPI::callClientChange(const int& real_size, const int& mali
     
     // Form JSON data
     std::string jsonData = "{"
-                      "\"realServers\":" + std::to_string(real_size) + ","
-                      "\"honeypots\":" + std::to_string(malicious_size) + ""
+                      "\"legitClients\":" + std::to_string(real_size) + ","
+                      "\"maliciousClients\":" + std::to_string(malicious_size) + ""
                       "}";
     auto showRequests = Confparcer::SETTING<bool>("SHOW_REQ_LOG",true);
     if(showRequests){
