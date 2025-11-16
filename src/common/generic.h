@@ -20,3 +20,11 @@
 #define TODO() do{ LOG_FATAL("TODO REACHED");} while(0)
 #define VERIFY_NOT_REACHED() do{ LOG_FATAL("UNEXPECTED REACHED");} while(0)
 
+#define NO_COPY(ClassName) \
+    ClassName(const ClassName&) = delete; \
+    ClassName& operator=(const ClassName&) = delete;
+
+// Запрет перемещения
+#define NO_MOVE(ClassName) \
+    ClassName(ClassName&&) = delete; \
+    ClassName& operator=(ClassName&&) = delete;
