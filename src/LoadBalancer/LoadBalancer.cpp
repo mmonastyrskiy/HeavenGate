@@ -225,10 +225,12 @@ void LoadBalancer::handle_client_request(ClientConnection::Ptr client) {
     
     if (!assigned_backend) {
         // For initial request, send to classifier first
+        LOG_INFO("New request from new client");
         read_from_client(client);
     } else {
         // Client already classified, proxy directly to assigned backend
         proxy_to_backend(client, assigned_backend);
+        LOG_INFO("New request from assigned client");
     }
 }
 
