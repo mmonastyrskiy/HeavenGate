@@ -1,5 +1,5 @@
 #include "../common/generic.h"
-#include <maxminddb.h>
+#include "../../thirdparty/libmaxminddb/include/maxminddb.h"
 #include <string>
 
 
