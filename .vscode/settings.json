@@ -82,7 +82,13 @@
         "xtree": "cpp",
         "xutility": "cpp",
         "source_location": "cpp",
-        "fstream": "cpp"
+        "fstream": "cpp",
+        "cinttypes": "cpp",
+        "csignal": "cpp",
+        "cstdarg": "cpp",
+        "set": "cpp",
+        "strstream": "cpp",
+        "variant": "cpp"
     },
     "todo-tree.tree.showCountsInTree": true
 }

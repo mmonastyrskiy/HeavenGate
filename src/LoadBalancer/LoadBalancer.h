@@ -83,7 +83,7 @@ struct PerformanceMetrics {
 
 class LoadBalancer {
 public:
-    LoadBalancer(RoutingStrategy strategy = RoutingStrategy::ROUND_ROBIN);
+    LoadBalancer(RoutingStrategy strategy = RoutingStrategy::IP_HASH);
     ~LoadBalancer();
 
     void start(int port = 80);
@@ -98,13 +98,21 @@ public:
     static std::string strategy_to_string(RoutingStrategy strategy);
 
 private:
+
+
+    mutable std::mutex clients_mutex_;
+    int legit_clients_count_ = 0;
+    int malicious_clients_count_ = 0;
+    std::thread stats_updater_thread_;
+    std::thread health_check_thread_;
+    std::atomic<bool> stats_updater_running_{false};
+    std::atomic<bool> health_check_running_{false};
     RoutingStrategy strategy_;
     std::atomic<bool> running_{false};
     
     std::vector<std::shared_ptr<BackendNode>> real_backends_;
     std::vector<std::shared_ptr<BackendNode>> honeypot_backends_;
     mutable std::mutex backends_mutex_;
-    
     std::unordered_map<std::string, std::shared_ptr<BackendNode>> client_backend_mapping_;
     mutable std::mutex mapping_mutex_;
     
@@ -116,7 +124,6 @@ private:
     asio::io_context io_context_;
     asio::ip::tcp::acceptor acceptor_;
     std::thread server_thread_;
-    std::thread health_check_thread_;
     
     // DataBus subscriptions
     SubscriptionId health_check_sub_;
@@ -124,6 +131,7 @@ private:
     SubscriptionId response_sub_;
 
     void start_accept();
+    void updateClientsStats();
     void handle_accept(ClientConnection::Ptr client, const asio::error_code& error);
     
     std::shared_ptr<BackendNode> select_backend(bool is_malicious, const std::string& client_ip);
@@ -139,7 +147,7 @@ private:
     std::shared_ptr<BackendNode> weighted_selection(const std::vector<std::shared_ptr<BackendNode>>& backends);
     
     // Health checking
-    void start_health_checks(std::chrono::seconds interval = std::chrono::seconds(30));
+    void start_health_checks();
     void perform_health_checks();
     bool check_server_health(const std::shared_ptr<BackendNode>& server);
     
@@ -150,12 +158,14 @@ private:
     
     void mark_request_success(const std::string& server_id, std::chrono::milliseconds response_time);
     void mark_request_failure(const std::string& server_id);
+    void remove_client(const std::string& client_ip);
     
     // Proxy functionality
     void proxy_to_backend(ClientConnection::Ptr client, std::shared_ptr<BackendNode> backend);
     void handle_client_request(ClientConnection::Ptr client);
     void read_from_client(ClientConnection::Ptr client);
     void read_from_backend(ClientConnection::Ptr client);
+    void start_stats_updater(std::chrono::seconds timeout);
 };
 
 #endif // LOADBALANCER_H

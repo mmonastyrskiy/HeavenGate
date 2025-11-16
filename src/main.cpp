@@ -65,21 +65,21 @@ int main() {
 
         // Добавляем реальные бэкенды
         balancer.add_backend(std::make_shared<BackendNode>(
-            "real-server-1", "127.0.0.1", 8080, false, 1.0f));
+            "real-server-1", "127.0.0.1", 8180, false, 1.0f));
         balancer.add_backend(std::make_shared<BackendNode>(
-            "real-server-2", "127.0.0.1", 8081, false, 1.0f));
+            "real-server-2", "127.0.0.1", 8181, false, 1.0f));
         balancer.add_backend(std::make_shared<BackendNode>(
-            "real-server-3", "127.0.0.1", 8082, false, 1.5f)); // Более мощный сервер
+            "real-server-3", "127.0.0.1", 8182, false, 1.5f)); // Более мощный сервер
 
         // Добавляем honeypot серверы
         balancer.add_backend(std::make_shared<BackendNode>(
-            "honeypot-1", "127.0.0.1", 9090, true, 1.0f));
+            "honeypot-1", "127.0.0.1", 9190, true, 1.0f));
         balancer.add_backend(std::make_shared<BackendNode>(
-            "honeypot-2", "127.0.0.1", 9091, true, 1.0f));
+            "honeypot-2", "127.0.0.1", 9191, true, 1.0f));
 
         std::cout << "✅ Backends registered:" << std::endl;
-        std::cout << "   - 3 real servers (8080, 8081, 8082)" << std::endl;
-        std::cout << "   - 2 honeypot servers (9090, 9091)" << std::endl;
+        std::cout << "   - 3 real servers (8180, 8181, 8182)" << std::endl;
+        std::cout << "   - 2 honeypot servers (9190, 9191)" << std::endl;
 
         // Запускаем балансировщик на порту 80
         balancer.start(80);

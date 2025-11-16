@@ -29,11 +29,13 @@ public:
     static DashboardAPI& the();
 
     // Main API method
-    std::string callUserRegistered(const std::string& client_ip,
+    std::string callRequestRegistered(const std::string& client_ip,
                                    const std::string& server_id,
                                    bool is_malicious,
                                    int* err = nullptr);
     std::string callAgentChange(const int& real_size, const int& honey_size, int* err = nullptr);
+
+    std::string callClientChange(const int& real_size, const int& malicious_size, int* err = nullptr);
 
     DashboardAPI() = default;
     ~DashboardAPI() = default;

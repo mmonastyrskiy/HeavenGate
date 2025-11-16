@@ -12,6 +12,7 @@
 #include <random>
 #include <functional>
 #include "../API/dashboardAPI.h"
+#include "../common/Confparcer.h"
 #include "../common/generic.h"
 
 // ClientConnection implementation
@@ -68,11 +69,81 @@ LoadBalancer::LoadBalancer(RoutingStrategy strategy)
     );
 }
 
+
+void LoadBalancer::updateClientsStats() {
+    std::lock_guard<std::mutex> lock(clients_mutex_);
+    
+    // Подсчитываем текущее количество клиентов
+    int current_legit = 0;
+    int current_malicious = 0;
+    
+    {
+        std::lock_guard<std::mutex> mapping_lock(mapping_mutex_);
+        for (const auto& [client_ip, backend] : client_backend_mapping_) {
+            if (backend && backend->is_honeypot) {
+                current_malicious++;
+            } else {
+                current_legit++;
+            }
+        }
+    }
+    
+    // Если статистика изменилась, отправляем обновление
+    if (current_legit != legit_clients_count_ || current_malicious != malicious_clients_count_) {
+        legit_clients_count_ = current_legit;
+        malicious_clients_count_ = current_malicious;
+        
+        // Вызываем API для обновления на dashboard
+        int err = 0;
+        DashboardAPI::the().callClientChange(legit_clients_count_, malicious_clients_count_, &err);
+        
+        if (err != 0) {
+            LOG_WARN("Failed to update clients stats on dashboard, error: " + std::to_string(err));
+        } else {
+            LOG_DEBUG("Clients stats updated: " + std::to_string(legit_clients_count_) + 
+                     " legit, " + std::to_string(malicious_clients_count_) + " malicious");
+        }
+    }
+}
+
+void LoadBalancer::stop() {
+    if (!running_.exchange(false)) return;
+
+    // Останавливаем stats updater
+    stats_updater_running_ = false;
+
+    // Останавливаем health checks
+    health_check_running_ = false;
+
+    io_context_.stop();
+    
+    // Ждем завершения всех потоков
+    if (server_thread_.joinable()) {
+        server_thread_.join();
+    }
+    
+    if (health_check_thread_.joinable()) {
+        health_check_thread_.join();
+    }
+
+    if (stats_updater_thread_.joinable()) {
+        stats_updater_thread_.join();
+    }
+
+    LOG_INFO("LoadBalancer stopped");
+}
+
 LoadBalancer::~LoadBalancer() {
-    stop();
+    LoadBalancer::stop();
     DataBus::instance().unsubscribe(health_check_sub_);
     DataBus::instance().unsubscribe(classification_sub_);
     DataBus::instance().unsubscribe(response_sub_);
+    
+    // Останавливаем stats updater
+    stats_updater_running_ = false;
+    if (stats_updater_thread_.joinable()) {
+        stats_updater_thread_.join();
+    }
 }
 
 void LoadBalancer::start(int port) {
@@ -92,28 +163,15 @@ void LoadBalancer::start(int port) {
             io_context_.run();
         });
 
-        start_health_checks();
+        //start_health_checks(); TODO: UNCOMMENT WHEN BACKENDS WILL BE ONLINE 
+        int timeout = Confparcer::SETTING<int>("DASHBOARD_AUTOUPDATE_PERIOD",30);
+        start_stats_updater(std::chrono::seconds(timeout)); // Обновляем статистику каждые 30 секунд
 
     } catch (const std::exception& e) {
         LOG_FATAL("Failed to start LoadBalancer: " + std::string(e.what()));
         running_ = false;
+        stats_updater_running_ = false;
     }
-}
-
-void LoadBalancer::stop() {
-    if (!running_.exchange(false)) return;
-
-    io_context_.stop();
-    
-    if (server_thread_.joinable()) {
-        server_thread_.join();
-    }
-    
-    if (health_check_thread_.joinable()) {
-        health_check_thread_.join();
-    }
-
-    LOG_INFO("LoadBalancer stopped");
 }
 
 void LoadBalancer::start_accept() {
@@ -162,16 +220,9 @@ void LoadBalancer::handle_accept(ClientConnection::Ptr client, const asio::error
 }
 
 void LoadBalancer::handle_client_request(ClientConnection::Ptr client) {
-    // Check if client already has assigned backend
+    read_from_client(client);
     auto assigned_backend = get_assigned_backend(client->client_ip);
-    
-    if (!assigned_backend) {
-        // For initial request, send to classifier first
-        read_from_client(client);
-    } else {
-        // Client already classified, proxy directly to assigned backend
-        proxy_to_backend(client, assigned_backend);
-    }
+    proxy_to_backend(client,assigned_backend);
 }
 
 void LoadBalancer::read_from_client(ClientConnection::Ptr client) {
@@ -198,12 +249,11 @@ void LoadBalancer::read_from_client(ClientConnection::Ptr client) {
                 
                 LOG_DEBUG("Request sent to classifier from client: " + client->client_ip);
                 
-                // Store the received data temporarily
-                // We'll use it when we get classification result
-                // For now, we wait for classification
-                
             } else if (error != asio::error::operation_aborted) {
                 LOG_WARN("Read from client failed: " + error.message());
+                
+                // Удаляем клиента при отключении
+                remove_client(client->client_ip);
                 client->close();
             }
         });
@@ -255,11 +305,17 @@ void LoadBalancer::read_from_backend(ClientConnection::Ptr client) {
                                 read_from_backend(client);
                             } else {
                                 LOG_WARN("Write to client failed: " + error.message());
+                                
+                                // Удаляем клиента при ошибке записи
+                                remove_client(client->client_ip);
                                 client->close();
                             }
                         });
                 } else if (error != asio::error::operation_aborted) {
                     LOG_WARN("Read from backend failed: " + error.message());
+                    
+                    // Удаляем клиента при отключении бэкенда
+                    remove_client(client->client_ip);
                     client->close();
                 }
             });
@@ -374,7 +430,7 @@ std::shared_ptr<BackendNode> LoadBalancer::select_backend(bool is_malicious, con
         );
 
         int err = 0;
-        DashboardAPI::the().callUserRegistered(client_ip, selected->id, is_malicious, &err);
+        DashboardAPI::the().callRequestRegistered(client_ip, selected->id, is_malicious, &err);
 
     } else {
         stats_.routing_errors++;
@@ -392,6 +448,7 @@ std::shared_ptr<BackendNode> LoadBalancer::get_assigned_backend(const std::strin
 void LoadBalancer::assign_backend_to_client(const std::string& client_ip, std::shared_ptr<BackendNode> backend) {
     std::lock_guard<std::mutex> lock(mapping_mutex_);
     client_backend_mapping_[client_ip] = backend;
+    updateClientsStats();
 }
 
 void LoadBalancer::release_backend(const std::string& server_id) {
@@ -430,6 +487,7 @@ void LoadBalancer::handle_classification(const Event& event) {
         auto backend = select_backend(is_malicious, client_ip);
         if (backend) {
             assign_backend_to_client(client_ip, backend);
+            updateClientsStats();
             
             // If we have client pointer, we can resume request processing
             if (client_ptr_val != 0) {
@@ -501,13 +559,18 @@ std::shared_ptr<BackendNode> LoadBalancer::weighted_selection(const std::vector<
 }
 
 // Health checking implementation
-void LoadBalancer::start_health_checks(std::chrono::seconds interval) {
-    if (running_.exchange(true)) return;
+void LoadBalancer::start_health_checks() {
+    if (health_check_running_.exchange(true)) return;
 
-    health_check_thread_ = std::thread([this, interval]() {
-        while (running_.load()) {
+    health_check_thread_ = std::thread([this]() {
+        auto interval = std::chrono::seconds(Confparcer::SETTING<int>("HEALTHCHECK_TIMEOUT",15)); // или значение из конфигурации
+        while (health_check_running_.load()) {
             perform_health_checks();
-            std::this_thread::sleep_for(interval);
+            
+            // Таймаут с проверкой флага
+            for (int i = 0; i < interval.count() && health_check_running_.load(); ++i) {
+                std::this_thread::sleep_for(std::chrono::seconds(1));
+            }
         }
     });
 }
@@ -696,6 +759,44 @@ std::string LoadBalancer::strategy_to_string(RoutingStrategy strategy) {
         case RoutingStrategy::LEAST_CONNECTIONS: return "Least Connections";
         case RoutingStrategy::IP_HASH: return "IP Hash";
         case RoutingStrategy::WEIGHTED: return "Weighted";
-        default: VERIFY_NOT_REACHED();
+        default:
+         VERIFY_NOT_REACHED();
+         return "Unknown";
     }
+}
+
+void LoadBalancer::remove_client(const std::string& client_ip) {
+    {
+        std::lock_guard<std::mutex> lock(mapping_mutex_);
+        auto it = client_backend_mapping_.find(client_ip);
+        if (it != client_backend_mapping_.end()) {
+            // Освобождаем бэкенд
+            if (it->second) {
+                release_backend(it->second->id);
+            }
+            client_backend_mapping_.erase(it);
+        }
+    }
+    
+    // Обновляем статистику после удаления клиента
+    updateClientsStats();
+    
+    LOG_DEBUG("Client removed: " + client_ip);
+}
+
+
+void LoadBalancer::start_stats_updater(std::chrono::seconds interval) {
+    if (stats_updater_running_.exchange(true)) return;
+
+    stats_updater_thread_ = std::thread([this, interval]() {
+        while (stats_updater_running_.load()) {
+            // Периодически обновляем статистику
+            updateClientsStats();
+            
+            // Используем таймаут с проверкой флага
+            for (int i = 0; i < interval.count() && stats_updater_running_.load(); ++i) {
+                std::this_thread::sleep_for(std::chrono::seconds(1));
+            }
+        }
+    });
 }
