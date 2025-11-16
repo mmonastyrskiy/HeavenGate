@@ -150,7 +150,7 @@ if(NOT MAXMINDDB_LIB OR NOT MAXMINDDB_INCLUDE_DIR)
 endif()
 
 message(STATUS "Found libmaxminddb: ${MAXMINDDB_LIB}")
-message(STATUS "Include dir: ${MAXMINDDB_INCLUDE_DIR}"
+message(STATUS "Include dir: ${MAXMINDDB_INCLUDE_DIR}")
 
 if(NOT CURL_FOUND)
     # Fallback: ручной поиск если find_package не сработал
