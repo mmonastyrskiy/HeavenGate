@@ -36,16 +36,23 @@ std::string get(const std::string& key, int* error_code) const;
 template<typename T>
 static T SETTING(const std::string& sett, const T& default_value = T{}) {
     std::string arg = Argparcer::Argparcer::the().get(sett);
+    LOG_DEBUG("gOT VALUES FROM ARGS " +arg);
     int e = 0;
-    std::string conf = Confparcer::the().get(sett,&e);
+    auto confparcer = Confparcer::the();
+    confparcer.parce();
+    auto conf = confparcer.get(sett,&e);
+    LOG_DEBUG("GOT VALUES FROM CONFIG AND ARGS " + conf);
     
     std::string value;
     
     // Приоритет: аргументы командной строки > конфиг файл > значение по умолчанию
     if (!arg.empty()) {
         value = arg;
+        LOG_INFO("Using ARG value for setting: " + sett);
+
     } else if (!conf.empty()) {
         value = conf;
+        LOG_INFO("Using CONFIG value for setting: " + sett);
     } else {
         LOG_WARN("Using default value for setting: " + sett);
         return default_value;
@@ -61,9 +68,9 @@ static T SETTING(const std::string& sett, const T& default_value = T{}) {
 std::string getconfig() const;
 
 private:
-    Confparcer() = default;
-    Confparcer(const Confparcer&) = delete;
-    Confparcer& operator=(const Confparcer&) = delete;
+    Confparcer();
+    Confparcer(const Confparcer&) = default;
+    Confparcer& operator=(const Confparcer&) = default;
 
     std::unordered_map<std::string, std::string> config;
 

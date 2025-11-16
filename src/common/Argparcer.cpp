@@ -31,6 +31,7 @@ namespace Argparcer {
 
     Argparcer& Argparcer::the() {
         static Argparcer instance;
+        //instance.parse(); FIXME
         return instance;
     }
 
@@ -101,4 +102,8 @@ namespace Argparcer {
         return "";
     }
 
+Argparcer::Argparcer(){ // FIXME: IMPLEMENT THIS 
+    parse(0,nullptr);
+    LOG_DEBUG("ARGPARCER PARSE CALLED");
+}
 } // namespace Argparcer

@@ -28,3 +28,6 @@
 #define NO_MOVE(ClassName) \
     ClassName(ClassName&&) = delete; \
     ClassName& operator=(ClassName&&) = delete;
+
+
+#define KDEBUG 1 // TODO: CHANGE ON RELEASE
