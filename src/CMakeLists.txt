@@ -194,7 +194,9 @@ target_link_libraries(heavengate PRIVATE
     json_header_only
     colorText
     asio
-    libpqxx::pqxx
+    pqxx
+    pq
+    maxminddb
     PostgreSQL::PostgreSQL
 
 )
