@@ -12,6 +12,8 @@ set(SRC_FILES
     AppManager/AppManager.cpp
     DataBus/DataBus.cpp
     DataStorage/DataStorage.cpp
+    DataStorage/PostgressQLManager.cpp
+    DataStorage/MiniOManager.cpp
     DataStorage/geo2ip.cpp
     LoadBalancer/LoadBalancer.cpp
     common/Argparcer.cpp
@@ -28,6 +30,8 @@ set(HEADER_FILES
     DataBus/DataBusMetrics.h
     DataBus/subscriptionID.h
     DataStorage/DataStorage.hpp
+    DataStorage/PostgressQLManager.hpp
+    DataStorage/MiniOManager.hpp
     DataStorage/geo2ip.h
     LoadBalancer/LoadBalancer.h
     ../include/colorText.h
@@ -139,6 +143,9 @@ find_package(CURL QUIET)
 #Поиск постгресс
 find_package(PostgreSQL REQUIRED)
 find_package(libpqxx REQUIRED)
+find_package(PkgConfig REQUIRED)
+find_package(MINIO_API REQUIRED)
+find_package(JSONCPP REQUIRED)
 
 
 
@@ -200,6 +207,9 @@ target_link_libraries(heavengate PRIVATE
     pq
     maxminddb
     PostgreSQL::PostgreSQL
+    MINIO_API
+    JSONCPP
+
 
 )
 

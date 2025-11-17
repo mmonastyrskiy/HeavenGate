@@ -30,6 +30,7 @@ public:
     std::atomic<bool> is_malicious{false};
     std::atomic<bool> active{true};
     std::string countryCode;
+    // TODO: ALSO IT HAS TO HAVE SOME RANDOM ID BULLSHIT
     
     ClientConnection(asio::io_context& io_context, const std::string& ip);
     void start();

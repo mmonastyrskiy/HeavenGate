@@ -246,7 +246,9 @@ void LoadBalancer::read_from_client(ClientConnection::Ptr client) {
             if (!error && bytes_read > 0) {
                 // Publish request to classifier
                 std::string request_data(buffer->data(), bytes_read);
-                
+                //TODO:
+                //Classifier::Preprocessor.ParseRequest(client, request_data);
+
                 DataBus::instance().publish(
                     BusEventType::REQUEST_FOR_CLASSIFICATION,
                     "load_balancer",
