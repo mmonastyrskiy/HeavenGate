@@ -138,6 +138,7 @@ endif()
 find_package(CURL QUIET)
 #Поиск постгресс
 find_package(PostgreSQL REQUIRED)
+find_package(libpqxx REQUIRED)
 
 
 
