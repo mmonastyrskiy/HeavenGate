@@ -1,40 +1,38 @@
-#ifndef DATASTORAGE_H
-#define DATASTORAGE_H
+#ifndef DATASTORAGE_HPP
+#define DATASTORAGE_HPP
 
-#include <pqxx/pqxx>
-#include <string>
 #include <memory>
+#include <string>
 
-class DataStorage
-{
+// Forward declaration
+namespace pqxx {
+    class connection;
+}
+
+class DataStorage {
 private:
-    const char* PORTGRE_ENV = "HG_DBPASS";
+    static constexpr const char* PORTGRE_ENV = "HG_DBPASS";
     std::unique_ptr<pqxx::connection> connection;
 
 public:
-    // Constructor & Destructor
     DataStorage();
     ~DataStorage();
     
-    // Delete copy constructor and assignment operator
-    DataStorage(const DataStorage& stor) = delete;
-    DataStorage& operator=(const DataStorage& ds) = delete;
+    // Delete copy operations
+    DataStorage(const DataStorage&) = delete;
+    DataStorage& operator=(const DataStorage&) = delete;
     
-    // Move constructor and move assignment operator
-    DataStorage(DataStorage&& other) noexcept = default;
-    DataStorage& operator=(DataStorage&& other) noexcept = default;
+    // Allow move operations
+    DataStorage(DataStorage&&) = default;
+    DataStorage& operator=(DataStorage&&) = default;
 
     // Public methods
     void connect();
     bool is_connected() const;
     pqxx::connection& get_connection();
-    
-    // Optional: Method to get connection info (without password)
-    std::string get_connection_info() const;
 
 private:
-    // Helper method to construct connection string
-    std::string build_connection_string(const char* db_password) const;
+    std::string build_connection_string() const;
 };
 
-#endif // DATASTORAGE_H
+#endif // DATASTORAGE_HPP
