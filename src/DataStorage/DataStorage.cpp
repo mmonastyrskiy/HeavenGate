@@ -38,7 +38,7 @@ std::string DataStorage::build_connection_string() const {
                "user=" + user + " ";
     
     // Get password from environment
-    const char* password = std::getenv(PORTGRE_ENV);
+    const char* password = std::getenv(PORTGRE_ENV); //FIXME MAYBE A BETTER APPROACH?
     if (password == nullptr) {
         LOG_FATAL("Cannot retrieve postgres password: environment variable " + std::string(PORTGRE_ENV) + " is not set");
         throw std::runtime_error("Missing PostgreSQL password environment variable");
@@ -72,6 +72,7 @@ bool DataStorage::is_connected() const {
 
 pqxx::connection& DataStorage::get_connection() {
     if (!is_connected()) {
+        LOG_ERROR("No actrive connections to postgres");
         throw std::runtime_error("No active database connection");
     }
     return *connection;
