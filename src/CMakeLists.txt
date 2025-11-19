@@ -8,41 +8,40 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 # Исходные файлы
 set(SRC_FILES
-    main.cpp
-    AppManager/AppManager.cpp
-    DataBus/DataBus.cpp
-    DataStorage/DataStorage.cpp
-    DataStorage/PostgressQLManager.cpp
-    DataStorage/MiniOManager.cpp
-    DataStorage/geo2ip.cpp
-    LoadBalancer/LoadBalancer.cpp
-    common/Argparcer.cpp
-    common/logger.cpp
-    common/Confparcer.cpp
     API/dashboardAPI.cpp
     API/SysController.cpp
+    AppManager/AppManager.cpp
+    common/Argparcer.cpp
+    common/Confparcer.cpp
+    common/logger.cpp
+    DataBus/DataBus.cpp
+    DataStorage/geo2ip.cpp
+    DataStorage/PostgressQLManager.cpp
+    LoadBalancer/LoadBalancer.cpp
+    main.cpp
+    ReqClassifier/ReqParser.cpp
 )
 
 set(HEADER_FILES
-    AppManager/AppComponent.h
-    AppManager/AppManager.h
-    DataBus/BusEvent.h
-    DataBus/DataBusMetrics.h
-    DataBus/subscriptionID.h
-    DataStorage/DataStorage.hpp
-    DataStorage/PostgressQLManager.hpp
-    DataStorage/MiniOManager.hpp
-    DataStorage/geo2ip.h
-    LoadBalancer/LoadBalancer.h
     ../include/colorText.h
     ../include/strconv.h
     ../thirdparty/json.hpp
-    common/Argparcer.h
-    common/logger.h
-    common/Confparcer.h
-    common/generic.h
     API/dashboardAPI.h
     API/SysController.hpp
+    AppManager/AppComponent.h
+    AppManager/AppManager.h
+    common/Argparcer.h
+    common/Confparcer.h
+    common/generic.h
+    common/logger.h
+    common/rand.h
+    DataBus/BusEvent.h
+    DataBus/DataBusMetrics.h
+    DataBus/subscriptionID.h
+    DataStorage/geo2ip.h
+    DataStorage/PostgressQLManager.hpp
+    LoadBalancer/LoadBalancer.h
+    ReqClassifier/ReqParser.hpp
 )
 
 # ==================== GO DASHBOARD ====================
@@ -143,9 +142,6 @@ find_package(CURL QUIET)
 #Поиск постгресс
 find_package(PostgreSQL REQUIRED)
 find_package(libpqxx REQUIRED)
-find_package(PkgConfig REQUIRED)
-find_package(MINIO_API REQUIRED)
-find_package(JSONCPP REQUIRED)
 
 
 
@@ -207,8 +203,6 @@ target_link_libraries(heavengate PRIVATE
     pq
     maxminddb
     PostgreSQL::PostgreSQL
-    MINIO_API
-    JSONCPP
 
 
 )

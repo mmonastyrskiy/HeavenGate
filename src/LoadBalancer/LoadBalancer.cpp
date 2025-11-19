@@ -15,11 +15,14 @@
 #include "../common/Confparcer.h"
 #include "../common/generic.h"
 #include "../DataStorage/geo2ip.h"
+#include "../common/rand.h"
 
 // ClientConnection implementation
 ClientConnection::ClientConnection(asio::io_context& io_context, const std::string& ip)
     : client_ip(ip), socket(io_context) {
-    client_id = ip + "_" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count());
+        RandomGenerator rg;
+        
+    client_id = rg.generate(16);
 }
 
 void ClientConnection::start() {
