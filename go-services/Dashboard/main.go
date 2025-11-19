@@ -4,27 +4,22 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"math/rand"
 	"net/http"
 	"sync"
 	"time"
-
-	"github.com/gorilla/mux"
-	"github.com/rs/cors"
 )
 
-type Request struct {
+type BalancerRequest struct {
 	ClientIP    string    `json:"clientIP"`
 	Path        string    `json:"path"`
 	IsMalicious bool      `json:"isMalicious"`
+	Timestamp   string    `json:"timestamp"`
 	ReceivedAt  time.Time `json:"receivedAt"`
 }
 
-type Client struct {
+type ClientInfo struct {
 	IP          string    `json:"ip"`
-	Country     string    `json:"country"`
 	IsMalicious bool      `json:"isMalicious"`
-	ServerID    string    `json:"serverId"`
 	FirstSeen   time.Time `json:"firstSeen"`
 	LastSeen    time.Time `json:"lastSeen"`
 	RequestCount int      `json:"requestCount"`
@@ -35,474 +30,319 @@ type AgentsInfo struct {
 	Honeypots   int `json:"honeypots"`
 }
 
-type Stats struct {
-	TotalRequests    int `json:"totalRequests"`
-	LegitClients     int `json:"legitClients"`
-	MaliciousClients int `json:"maliciousClients"`
-}
-
 type SSEClient struct {
 	ID      string
 	Channel chan []byte
 }
 
-type SSEMessage struct {
-	Type string      `json:"type"`
-	Data interface{} `json:"data"`
+var (
+	requests   []BalancerRequest
+	clients    = make(map[string]*ClientInfo)
+	agents     = AgentsInfo{}
+	mu         sync.Mutex
+	sseClients = make(map[*SSEClient]bool)
+	sseMutex   sync.Mutex
+)
+
+func main() {
+	fmt.Println("🚀 HeavenGate Dashboard started!")
+	fmt.Println("📡 Listening for balancer requests on :8081")
+	fmt.Println("🌐 Open http://localhost:8081 to view balancer requests")
+	fmt.Println("--------------------------------------------------------")
+
+	// Обслуживание статических файлов
+	http.Handle("/", http.FileServer(http.Dir("../../static")))
+
+	// SSE endpoint для real-time обновлений
+	http.HandleFunc("/events", handleSSE)
+
+	// API для приема запросов от балансировщика
+	http.HandleFunc("/api/req_registered", handleBalancerRequest)
+
+	// API для получения истории запросов
+	http.HandleFunc("/api/user_registered", getUserUpdate)
+
+	// API для обновления информации об агентах
+	http.HandleFunc("/api/agents", handleAgentsUpdate)
+
+	// Запуск сервера
+	log.Fatal(http.ListenAndServe(":8081", nil))
 }
 
-type App struct {
-	mu        sync.RWMutex
-	requests  []Request
-	clients   map[string]*Client
-	agents    AgentsInfo
-	stats     Stats
-	sseClients map[*SSEClient]bool
-	sseMutex  sync.RWMutex
-}
-
-func NewApp() *App {
-	app := &App{
-		requests:   make([]Request, 0),
-		clients:    make(map[string]*Client),
-		sseClients: make(map[*SSEClient]bool),
-		agents: AgentsInfo{
-			RealServers: 3,
-			Honeypots:   5,
-		},
-	}
-
-	// Initialize with demo data
-	app.initializeDemoData()
-	
-	// Start background task to generate demo requests
-	go app.generateDemoRequests()
-
-	return app
-}
-
-func (app *App) initializeDemoData() {
-	countries := []string{"us", "ru", "cn", "de", "fr", "uk", "jp", "br"}
-	serverTypes := []string{"srv-web", "srv-api", "srv-db", "srv-honeypot"}
-
-	for i := 0; i < 10; i++ {
-		country := countries[i%len(countries)]
-		serverType := serverTypes[i%len(serverTypes)]
-		isMalicious := i%3 == 0
-
-		client := &Client{
-			IP:          fmt.Sprintf("192.168.1.%d", 100+i),
-			Country:     country,
-			IsMalicious: isMalicious,
-			ServerID:    fmt.Sprintf("%s-%02d", serverType, i+1),
-			FirstSeen:   time.Now().Add(-time.Duration(rand.Intn(24)) * time.Hour),
-			LastSeen:    time.Now().Add(-time.Duration(rand.Intn(60)) * time.Minute),
-			RequestCount: rand.Intn(50) + 1,
-		}
-
-		app.clients[client.IP] = client
-
-		if isMalicious {
-			app.stats.MaliciousClients++
-		} else {
-			app.stats.LegitClients++
-		}
-	}
-
-	// Add some initial requests
-	for i := 0; i < 5; i++ {
-		request := Request{
-			ClientIP:    fmt.Sprintf("192.168.1.%d", 100+rand.Intn(10)),
-			Path:        "/api/test",
-			IsMalicious: rand.Float32() < 0.3,
-			ReceivedAt:  time.Now().Add(-time.Duration(i*10) * time.Minute),
-		}
-		app.requests = append(app.requests, request)
-		app.stats.TotalRequests++
-	}
-}
-
-func (app *App) generateDemoRequests() {
-	ticker := time.NewTicker(5 * time.Second)
-	defer ticker.Stop()
-
-	paths := []string{
-		"/api/login",
-		"/admin/panel",
-		"/api/data",
-		"/user/profile",
-		"/download/file",
-		"/upload",
-		"/config",
-		"/backup",
-	}
-
-	countries := []string{"us", "ru", "cn", "de", "fr", "uk", "jp", "br"}
-	serverTypes := []string{"srv-web", "srv-api", "srv-db", "srv-honeypot"}
-
-	for range ticker.C {
-		// Generate random IP
-		ip := fmt.Sprintf("%d.%d.%d.%d",
-			rand.Intn(255), rand.Intn(255), rand.Intn(255), rand.Intn(255))
-
-		// 20% chance of being malicious
-		isMalicious := rand.Float32() < 0.2
-
-		request := Request{
-			ClientIP:    ip,
-			Path:        paths[rand.Intn(len(paths))],
-			IsMalicious: isMalicious,
-			ReceivedAt:  time.Now(),
-		}
-
-		app.mu.Lock()
-		app.requests = append(app.requests, request)
-		app.stats.TotalRequests++
-
-		// Update or create client
-		if client, exists := app.clients[ip]; exists {
-			client.LastSeen = time.Now()
-			client.RequestCount++
-			client.IsMalicious = client.IsMalicious || isMalicious
-		} else {
-			country := countries[rand.Intn(len(countries))]
-			serverType := serverTypes[rand.Intn(len(serverTypes))]
-
-			client := &Client{
-				IP:          ip,
-				Country:     country,
-				IsMalicious: isMalicious,
-				ServerID:    fmt.Sprintf("%s-%02d", serverType, len(app.clients)+1),
-				FirstSeen:   time.Now(),
-				LastSeen:    time.Now(),
-				RequestCount: 1,
-			}
-			app.clients[ip] = client
-
-			if isMalicious {
-				app.stats.MaliciousClients++
-			} else {
-				app.stats.LegitClients++
-			}
-		}
-		app.mu.Unlock()
-
-		// Send SSE update
-		app.sendSSEUpdate(request)
-	}
-}
-
-func (app *App) sendSSEUpdate(request Request) {
-	app.mu.RLock()
-	stats := map[string]interface{}{
-		"totalRequests":    app.stats.TotalRequests,
-		"legitClients":     app.stats.LegitClients,
-		"maliciousClients": app.stats.MaliciousClients,
-		"agents": map[string]int{
-			"realServers": app.agents.RealServers,
-			"honeypots":   app.agents.Honeypots,
-		},
-	}
-	app.mu.RUnlock()
-
-	message := SSEMessage{
-		Type: "new_request",
-		Data: map[string]interface{}{
-			"request": request,
-			"stats":   stats,
-		},
-	}
-
-	app.broadcastSSE(message)
-}
-
-// API Handlers
-func (app *App) handleStats(w http.ResponseWriter, r *http.Request) {
-	app.mu.RLock()
-	defer app.mu.RUnlock()
-
-	stats := map[string]interface{}{
-		"totalRequests":    app.stats.TotalRequests,
-		"legitClients":     app.stats.LegitClients,
-		"maliciousClients": app.stats.MaliciousClients,
-		"realServers":      app.agents.RealServers,
-		"honeypots":        app.agents.Honeypots,
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(stats)
-}
-
-func (app *App) handleRequests(w http.ResponseWriter, r *http.Request) {
-	app.mu.RLock()
-	defer app.mu.RUnlock()
-
-	// Get last 20 requests (most recent first)
-	limit := 20
-	start := len(app.requests) - limit
-	if start < 0 {
-		start = 0
-	}
-	recentRequests := app.requests[start:]
-	
-	// Reverse to show most recent first
-	for i, j := 0, len(recentRequests)-1; i < j; i, j = i+1, j-1 {
-		recentRequests[i], recentRequests[j] = recentRequests[j], recentRequests[i]
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(recentRequests)
-}
-
-func (app *App) handleClients(w http.ResponseWriter, r *http.Request) {
-	app.mu.RLock()
-	defer app.mu.RUnlock()
-
-	clients := make([]*Client, 0, len(app.clients))
-	for _, client := range app.clients {
-		clients = append(clients, client)
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(clients)
-}
-
-func (app *App) handleAgents(w http.ResponseWriter, r *http.Request) {
-	app.mu.RLock()
-	defer app.mu.RUnlock()
-
-	agents := map[string]int{
-		"realServers": app.agents.RealServers,
-		"honeypots":   app.agents.Honeypots,
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(agents)
-}
-
-// Balancer request handler (for receiving requests from load balancer)
-func (app *App) handleBalancerRequest(w http.ResponseWriter, r *http.Request) {
+func handleBalancerRequest(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
-	var request Request
-	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+	var balancerReq BalancerRequest
+	if err := json.NewDecoder(r.Body).Decode(&balancerReq); err != nil {
 		http.Error(w, "Invalid JSON", http.StatusBadRequest)
 		return
 	}
 
-	request.ReceivedAt = time.Now()
+	balancerReq.ReceivedAt = time.Now()
 
-	app.mu.Lock()
-	app.requests = append(app.requests, request)
-	app.stats.TotalRequests++
-
-	// Update client info
-	if client, exists := app.clients[request.ClientIP]; exists {
-		client.LastSeen = time.Now()
-		client.RequestCount++
-		if request.IsMalicious {
-			client.IsMalicious = true
-		}
-	} else {
-		// Create new client with random country and server
-		countries := []string{"us", "ru", "cn", "de", "fr", "uk", "jp", "br"}
-		serverTypes := []string{"srv-web", "srv-api", "srv-db", "srv-honeypot"}
-		
-		client := &Client{
-			IP:          request.ClientIP,
-			Country:     countries[rand.Intn(len(countries))],
-			IsMalicious: request.IsMalicious,
-			ServerID:    fmt.Sprintf("%s-%02d", serverTypes[rand.Intn(len(serverTypes))], len(app.clients)+1),
-			FirstSeen:   time.Now(),
-			LastSeen:    time.Now(),
-			RequestCount: 1,
-		}
-		app.clients[request.ClientIP] = client
-
-		if request.IsMalicious {
-			app.stats.MaliciousClients++
-		} else {
-			app.stats.LegitClients++
-		}
+	mu.Lock()
+	// Добавляем запрос в историю
+	requests = append(requests, balancerReq)
+	
+	// Ограничиваем историю
+	if len(requests) > 1000 {
+		requests = requests[1:]
 	}
-	app.mu.Unlock()
+	
+	// Обновляем информацию о клиенте
+	updateClientInfo(balancerReq)
+	
+	// Подготавливаем данные для статистики
+	stats := prepareStats()
+	mu.Unlock()
 
-	// Log the request
+	// Отправляем новое сообщение всем SSE клиентам
+	broadcastToSSEClients("new_request", map[string]interface{}{
+		"request": balancerReq,
+		"stats":   stats,
+	})
+
+	// Логируем в консоль
 	status := "✅ LEGIT"
-	if request.IsMalicious {
+	if balancerReq.IsMalicious {
 		status = "🚨 MALICIOUS"
 	}
 	fmt.Printf("%s | %s | %s | %s\n", 
 		status, 
-		request.ClientIP, 
-		request.Path, 
-		request.ReceivedAt.Format("15:04:05"))
+		balancerReq.ClientIP, 
+		balancerReq.Path, 
+		balancerReq.ReceivedAt.Format("15:04:05"))
 
-	// Send SSE update
-	app.sendSSEUpdate(request)
-
-	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]string{"status": "received"})
 }
 
-// SSE Handler
-func (app *App) handleSSE(w http.ResponseWriter, r *http.Request) {
+func updateClientInfo(request BalancerRequest) {
+	clientIP := request.ClientIP
+	now := time.Now()
+	
+	if client, exists := clients[clientIP]; exists {
+		client.LastSeen = now
+		client.RequestCount++
+		// Если запрос вредоносный, помечаем клиента как вредоносного
+		if request.IsMalicious {
+			client.IsMalicious = true
+		}
+	} else {
+		clients[clientIP] = &ClientInfo{
+			IP:          clientIP,
+			IsMalicious: request.IsMalicious,
+			FirstSeen:   now,
+			LastSeen:    now,
+			RequestCount: 1,
+		}
+	}
+}
+
+func prepareStats() map[string]interface{} {
+	legitClients := 0
+	maliciousClients := 0
+	
+	for _, client := range clients {
+		if client.IsMalicious {
+			maliciousClients++
+		} else {
+			legitClients++
+		}
+	}
+	
+	return map[string]interface{}{
+		"totalRequests":    len(requests),
+		"legitClients":     legitClients,
+		"maliciousClients": maliciousClients,
+		"agents":           agents,
+	}
+}
+
+func getUserUpdate(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Декодируем JSON из тела запроса
+	var requestData struct {
+		LegitClients     int `json:"legitClients"`
+		MaliciousClients int `json:"maliciousClients"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&requestData); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+	defer r.Body.Close()
+
+	// Отправляем данные через SSE
+	broadcastToSSEClients("agents_update", map[string]interface{}{
+		"agents": map[string]interface{}{
+			"legitClients":     requestData.LegitClients,
+			"maliciousClients": requestData.MaliciousClients,
+		},
+	})
+
+	// Возвращаем успешный ответ
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"status":  "success",
+		"message": "Data received and broadcasted",
+		"data": map[string]interface{}{
+			"legitClients":     requestData.LegitClients,
+			"maliciousClients": requestData.MaliciousClients,
+		},
+	})
+}
+
+func handleAgentsUpdate(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var newAgents AgentsInfo
+	if err := json.NewDecoder(r.Body).Decode(&newAgents); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	mu.Lock()
+	agents = newAgents
+	mu.Unlock()
+
+	// Отправляем обновление всем SSE клиентам
+	broadcastToSSEClients("agents_update", map[string]interface{}{
+		"agents": agents,
+	})
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"status": "updated"})
+}
+
+func handleSSE(w http.ResponseWriter, r *http.Request) {
+	// Устанавливаем заголовки для SSE
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Headers", "Cache-Control")
 
+	// Создаем флашер для принудительной отправки данных
 	flusher, ok := w.(http.Flusher)
 	if !ok {
 		http.Error(w, "SSE not supported", http.StatusInternalServerError)
 		return
 	}
 
-	// Create new SSE client
+	// Создаем нового клиента
 	client := &SSEClient{
 		ID:      fmt.Sprintf("%d", time.Now().UnixNano()),
-		Channel: make(chan []byte, 10),
+		Channel: make(chan []byte, 10), // Буферизованный канал
 	}
 
-	// Register client
-	app.sseMutex.Lock()
-	app.sseClients[client] = true
-	app.sseMutex.Unlock()
+	// Регистрируем клиента
+	sseMutex.Lock()
+	sseClients[client] = true
+	sseMutex.Unlock()
 
-	log.Printf("SSE client connected: %s, total clients: %d", client.ID, len(app.sseClients))
+	log.Printf("SSE client connected: %s, total clients: %d", client.ID, len(sseClients))
 
-	// Send connection confirmation
-	connectMsg := SSEMessage{
-		Type: "connected",
-		Data: map[string]string{
-			"clientId": client.ID,
-			"message":  "Connected to HeavenGate SSE",
-		},
-	}
-	connectData, _ := json.Marshal(connectMsg)
-	fmt.Fprintf(w, "data: %s\n\n", string(connectData))
+	// Уведомляем о подключении
+	fmt.Fprintf(w, "event: connected\ndata: {\"clientId\": \"%s\"}\n\n", client.ID)
 	flusher.Flush()
 
-	// Send initial data
-	app.sendInitialData(client.ID, w, flusher)
+	// Отправляем начальные данные
+	mu.Lock()
+	
+	legitClients := 0
+	maliciousClients := 0
+	for _, client := range clients {
+		if client.IsMalicious {
+			maliciousClients++
+		} else {
+			legitClients++
+		}
+	}
+	
+	initialData := map[string]interface{}{
+		"type": "initial",
+		"data": map[string]interface{}{
+			"requests":        requests,
+			"total":           len(requests),
+			"legitClients":    legitClients,
+			"maliciousClients": maliciousClients,
+			"agents":          agents,
+		},
+	}
+	mu.Unlock()
 
-	// Handle client messages
+	initialDataJSON, _ := json.Marshal(initialData)
+	fmt.Fprintf(w, "data: %s\n\n", string(initialDataJSON))
+	flusher.Flush()
+
+	// Обрабатываем сообщения для этого клиента
 	for {
 		select {
 		case message := <-client.Channel:
+			// Отправляем сообщение клиенту
 			_, err := fmt.Fprintf(w, "data: %s\n\n", string(message))
 			if err != nil {
+				// Клиент отключился
 				break
 			}
 			flusher.Flush()
 
 		case <-r.Context().Done():
-			app.sseMutex.Lock()
-			delete(app.sseClients, client)
-			app.sseMutex.Unlock()
+			// Клиент отключился
+			sseMutex.Lock()
+			delete(sseClients, client)
+			sseMutex.Unlock()
 			close(client.Channel)
-			log.Printf("SSE client disconnected: %s, total clients: %d", client.ID, len(app.sseClients))
+			log.Printf("SSE client disconnected: %s, total clients: %d", client.ID, len(sseClients))
 			return
 
 		case <-time.After(30 * time.Second):
-			// Send ping to keep connection alive
-			pingMsg := SSEMessage{
-				Type: "ping",
-				Data: map[string]string{"message": "keep-alive"},
+			// Отправляем ping для поддержания соединения
+			pingData := map[string]interface{}{
+				"type":    "ping",
+				"message": "keep-alive",
 			}
-			pingData, _ := json.Marshal(pingMsg)
-			fmt.Fprintf(w, "data: %s\n\n", string(pingData))
+			pingJSON, _ := json.Marshal(pingData)
+			fmt.Fprintf(w, "data: %s\n\n", string(pingJSON))
 			flusher.Flush()
 		}
 	}
 }
 
-func (app *App) sendInitialData(clientID string, w http.ResponseWriter, flusher http.Flusher) {
-	app.mu.RLock()
-	defer app.mu.RUnlock()
-
-	// Prepare initial data
-	initialData := SSEMessage{
-		Type: "initial",
-		Data: map[string]interface{}{
-			"requests": app.requests,
-			"agents":   app.agents,
-			"stats": map[string]interface{}{
-				"totalRequests":    app.stats.TotalRequests,
-				"legitClients":     app.stats.LegitClients,
-				"maliciousClients": app.stats.MaliciousClients,
-			},
-		},
+func broadcastToSSEClients(eventType string, data interface{}) {
+	message := map[string]interface{}{
+		"type": eventType,
+		"data": data,
 	}
 
-	initialJSON, _ := json.Marshal(initialData)
-	fmt.Fprintf(w, "data: %s\n\n", string(initialJSON))
-	flusher.Flush()
-}
-
-func (app *App) broadcastSSE(message SSEMessage) {
 	messageJSON, err := json.Marshal(message)
 	if err != nil {
 		log.Printf("Error marshaling SSE message: %v", err)
 		return
 	}
 
-	app.sseMutex.RLock()
-	defer app.sseMutex.RUnlock()
+	sseMutex.Lock()
+	defer sseMutex.Unlock()
 
-	for client := range app.sseClients {
+	for client := range sseClients {
 		select {
 		case client.Channel <- messageJSON:
-			// Message sent successfully
+			// Сообщение отправлено
 		default:
-			// Channel is full, remove client
-			log.Printf("SSE client channel full, removing: %s", client.ID)
-			app.sseMutex.Lock()
-			delete(app.sseClients, client)
-			close(client.Channel)
-			app.sseMutex.Unlock()
+			// Канал заполнен, пропускаем этого клиента
+			log.Printf("SSE client channel full, skipping: %s", client.ID)
 		}
 	}
-}
-
-func main() {
-	app := NewApp()
-
-	router := mux.NewRouter()
-
-	// API routes
-	api := router.PathPrefix("/api").Subrouter()
-	api.HandleFunc("/stats", app.handleStats).Methods("GET")
-	api.HandleFunc("/requests", app.handleRequests).Methods("GET")
-	api.HandleFunc("/clients", app.handleClients).Methods("GET")
-	api.HandleFunc("/agents", app.handleAgents).Methods("GET")
-	api.HandleFunc("/events", app.handleSSE).Methods("GET")
-	
-	// Balancer endpoint (for receiving requests from load balancer)
-	api.HandleFunc("/balancer/request", app.handleBalancerRequest).Methods("POST")
-
-	// Serve static files for production
-	router.PathPrefix("/").Handler(http.FileServer(http.Dir("../frontend/dist/")))
-
-	// CORS configuration
-	c := cors.New(cors.Options{
-		AllowedOrigins:   []string{"http://localhost:5173", "http://localhost:8080"},
-		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowedHeaders:   []string{"*"},
-		AllowCredentials: true,
-	})
-
-	handler := c.Handler(router)
-
-	port := ":8080"
-	log.Printf("🚀 HeavenGate Dashboard server starting on port %s", port)
-	log.Printf("📡 Listening for balancer requests on /api/balancer/request")
-	log.Printf("🌐 Dashboard available at: http://localhost%s", port)
-	log.Printf("--------------------------------------------------------")
-	
-	log.Fatal(http.ListenAndServe(port, handler))
 }
