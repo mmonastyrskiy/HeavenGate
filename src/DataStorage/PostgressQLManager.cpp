@@ -1,7 +1,6 @@
-#include "DataStorage.hpp"
 
 // Include pqxx headers - adjust path based on your setup
-//#include <pqxx/pqxx>
+#include <pqxx/pqxx>
 // OR if using local build:
 // #include "path/to/your/pqxx/include/pqxx/pqxx"
 #include "../../thirdparty/libpqxx/src/pqxx-source.hxx"
@@ -10,6 +9,7 @@
 #include <memory>
 #include "../common/Confparcer.h"
 #include "../common/logger.h"
+#include "PostgressQLManager.hpp"
 
 // Constructor
 PostgressQLManager::PostgressQLManager() : connection(nullptr) {
