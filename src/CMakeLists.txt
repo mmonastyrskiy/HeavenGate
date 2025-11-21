@@ -17,6 +17,7 @@ set(SRC_FILES
     DataBus/DataBus.cpp
     DataStorage/geo2ip.cpp
     DataStorage/PostgressQLManager.cpp
+    DataStorage/ElasticStorage.cpp
     LoadBalancer/LoadBalancer.cpp
     main.cpp
     ReqClassifier/ReqParser.cpp
@@ -40,13 +41,14 @@ set(HEADER_FILES
     DataBus/subscriptionID.h
     DataStorage/geo2ip.h
     DataStorage/PostgressQLManager.hpp
+    DataStorage/ElasticStorage.hpp
     LoadBalancer/LoadBalancer.h
     ReqClassifier/ReqParser.hpp
 )
 
 # ==================== GO DASHBOARD ====================
 
-# Проверяем наличие Go
+# Проверяем наличие Go // TODO: MIGRATE ME TO THE SEPARATE FILE 
 find_program(GO_EXECUTABLE go)
 if(GO_EXECUTABLE)
     # Получаем абсолютный путь к директории Go проекта
@@ -142,6 +144,10 @@ find_package(CURL QUIET)
 #Поиск постгресс
 find_package(PostgreSQL REQUIRED)
 find_package(libpqxx REQUIRED)
+find_package(PkgConfig REQUIRED)
+
+
+pkg_check_modules(ELASTICSEARCH REQUIRED elasticsearch)
 
 
 
@@ -184,6 +190,8 @@ else()
     message(WARNING "CURL not found. Some features may be unavailable.")
 endif()
 
+
+
 # Заголовочные файлы
 target_include_directories(heavengate PRIVATE
     ${CMAKE_SOURCE_DIR}/include
@@ -207,6 +215,10 @@ target_link_libraries(heavengate PRIVATE
 
 )
 
+
+target_link_libraries(string_storage ${ELASTICSEARCH_LIBRARIES})
+target_include_directories(string_storage PRIVATE ${ELASTICSEARCH_INCLUDE_DIRS})
+target_compile_options(string_storage PRIVATE ${ELASTICSEARCH_CFLAGS_OTHER})
 # Компиляционные флаги
 if(MSVC)
     target_compile_options(heavengate PRIVATE /W4)

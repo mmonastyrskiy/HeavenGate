@@ -51,7 +51,6 @@ public:
     std::atomic<long> total_requests{0};
     std::chrono::steady_clock::time_point last_request_time;
     std::chrono::steady_clock::time_point last_health_check;
-
     BackendNode(const std::string& id, const std::string& host, int port,
                 bool is_honeypot = false, float weight = 1.0f);
 };
@@ -85,6 +84,8 @@ struct PerformanceMetrics {
 
 class LoadBalancer {
 public:
+std::string runID;
+
     LoadBalancer(RoutingStrategy strategy = RoutingStrategy::IP_HASH);
     ~LoadBalancer();
 

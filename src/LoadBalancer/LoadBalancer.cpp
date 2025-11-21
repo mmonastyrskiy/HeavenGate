@@ -50,6 +50,9 @@ LoadBalancer::LoadBalancer(RoutingStrategy strategy)
     : strategy_(strategy), running_(false), acceptor_(io_context_) {
 
     stats_.start_time = std::chrono::steady_clock::now();
+    RandomGenerator rg;
+    runID = rg.generate(16);
+    
 
     health_check_sub_ = DataBus::instance().subscribe(
         BusEventType::SERVICE_HEALTH_UPDATE,

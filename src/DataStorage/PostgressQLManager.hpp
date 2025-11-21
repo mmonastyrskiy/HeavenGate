@@ -1,8 +1,7 @@
 
-
+#pragma once
 #include <memory>
 #include <string>
-
 // Forward declaration
 namespace pqxx {
     class connection;
