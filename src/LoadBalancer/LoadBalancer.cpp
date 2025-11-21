@@ -213,10 +213,14 @@ void LoadBalancer::handle_accept(ClientConnection::Ptr client, const asio::error
                     std::chrono::system_clock::now().time_since_epoch()).count()}
             }
         );
+        
 
         LOG_INFO("New client connected: " + client->client_ip + "FROM: " + client->countryCode);
+        
 
-        // Start handling client requests
+        //TODO: UNCOMMENT WHEN CLASSIFIER READY AND MAKE LOGIC CONSISTENT 
+
+        /*// Start handling client requests
         handle_client_request(client);
         
         // Continue accepting new connections
@@ -226,7 +230,29 @@ void LoadBalancer::handle_accept(ClientConnection::Ptr client, const asio::error
         if (running_.load()) {
             start_accept();
         }
+            */
+           auto backend = select_backend(false, client->client_ip); // false = не malicious (реальный сервер)
+        
+        if (backend) {
+            LOG_INFO("Immediately routing client " + client->client_ip + " to backend: " + backend->id);
+            assign_backend_to_client(client->client_ip, backend);
+            
+            // Сразу начинаем проксирование
+            proxy_to_backend(client, backend);
+        } else {
+            LOG_ERROR("No available real backends for client: " + client->client_ip);
+            client->close();
+        }
+        
+        // Continue accepting new connections
+        start_accept();
+    } else {
+        LOG_ERROR("Accept error: " + error.message());
+        if (running_.load()) {
+            start_accept();
     }
+}
+        
 }
 
 void LoadBalancer::handle_client_request(ClientConnection::Ptr client) {
@@ -236,7 +262,16 @@ void LoadBalancer::handle_client_request(ClientConnection::Ptr client) {
     if (!assigned_backend) {
         // For initial request, send to classifier first
         LOG_INFO("New request from new client");
-        read_from_client(client);
+        //read_from_client(client); //TODO: THIS IS TEMPORARY FIX TO TEST THEN WE HAVE TO MAKE THE LOGIC CONSISTENT 
+        auto backend = select_backend(false, client->client_ip);
+        if (backend) {
+            LOG_INFO("Routing new client " + client->client_ip + " to backend: " + backend->id);
+            assign_backend_to_client(client->client_ip, backend);
+            proxy_to_backend(client, backend);
+        } else {
+            LOG_ERROR("No backends available for client: " + client->client_ip);
+            client->close();
+        }
     } else {
         // Client already classified, proxy directly to assigned backend
         proxy_to_backend(client, assigned_backend);
@@ -255,7 +290,7 @@ void LoadBalancer::read_from_client(ClientConnection::Ptr client) {
                 //TODO:
                 //Classifier::Preprocessor.ParseRequest(client, request_data);
 
-                DataBus::instance().publish(
+                /*DataBus::instance().publish(
                     BusEventType::REQUEST_FOR_CLASSIFICATION,
                     "load_balancer",
                     nlohmann::json{
@@ -268,8 +303,11 @@ void LoadBalancer::read_from_client(ClientConnection::Ptr client) {
                     }
                 );
                 
-                LOG_DEBUG("Request sent to classifier from client: " + client->client_ip);
                 
+                LOG_DEBUG("Request sent to classifier from client: " + client->client_ip);
+*/
+                // TODO: THIS IS TEMPORARY THING JUST TO TEST PROXING 
+                LOG_DEBUG("Received " + std::to_string(bytes_read) + " bytes from client: " + client->client_ip);
             } else if (error != asio::error::operation_aborted) {
                 LOG_WARN("Read from client failed: " + error.message());
                 
