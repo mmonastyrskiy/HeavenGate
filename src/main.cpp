@@ -65,8 +65,8 @@ int main() {
 
         // Добавляем реальные бэкенды
         balancer.add_backend(std::make_shared<BackendNode>(
-            "real-server-1", "127.0.0.1", 8180, false, 1.0f));
-        balancer.add_backend(std::make_shared<BackendNode>(
+            "real-server-1", "192.168.235.148", 80, false, 1.0f));
+        /*balancer.add_backend(std::make_shared<BackendNode>(
             "real-server-2", "127.0.0.1", 8181, false, 1.0f));
         balancer.add_backend(std::make_shared<BackendNode>(
             "real-server-3", "127.0.0.1", 8182, false, 1.5f)); // Более мощный сервер
@@ -76,6 +76,7 @@ int main() {
             "honeypot-1", "127.0.0.1", 9190, true, 1.0f));
         balancer.add_backend(std::make_shared<BackendNode>(
             "honeypot-2", "127.0.0.1", 9191, true, 1.0f));
+            */
 
         std::cout << "✅ Backends registered:" << std::endl;
         std::cout << "   - 3 real servers (8180, 8181, 8182)" << std::endl;
