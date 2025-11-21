@@ -81,34 +81,60 @@ LoadBalancer::LoadBalancer(RoutingStrategy strategy)
 
 
 void LoadBalancer::updateClientsStats() {
-    std::lock_guard<std::mutex> lock(clients_mutex_);
-    
-    // Подсчитываем текущее количество клиентов
-    int current_legit = 0;
-    int current_malicious = 0;
-    
+    // Быстрая проверка без блокировки сначала
     {
-        std::lock_guard<std::mutex> mapping_lock(mapping_mutex_);
-        for (const auto& [client_ip, backend] : client_backend_mapping_) {
-            if (backend && backend->is_honeypot) {
-                current_malicious++;
-            } else {
-                current_legit++;
+        std::lock_guard<std::mutex> lock(clients_mutex_);
+        // Если статистика не изменилась, сразу выходим
+        int current_legit = 0;
+        int current_malicious = 0;
+        
+        {
+            std::lock_guard<std::mutex> mapping_lock(mapping_mutex_);
+            for (const auto& [client_ip, backend] : client_backend_mapping_) {
+                if (backend && backend->is_honeypot) {
+                    current_malicious++;
+                } else {
+                    current_legit++;
+                }
             }
         }
+        
+        // Быстрый выход если статистика не изменилась
+        if (current_legit == legit_clients_count_ && current_malicious == malicious_clients_count_) {
+            return;
+        }
+        
+        legit_clients_count_ = current_legit;
+        malicious_clients_count_ = current_malicious;
+    } // отпускаем clients_mutex_ как можно раньше
+    
+    // Защита от слишком частых вызовов API
+    static std::mutex api_mutex;
+    static auto last_api_call = std::chrono::steady_clock::now();
+    
+    {
+        std::lock_guard<std::mutex> api_lock(api_mutex);
+        auto now = std::chrono::steady_clock::now();
+        
+        // Не чаще чем раз в 2 секунды
+        if (now - last_api_call < std::chrono::seconds(2)) {
+            return;
+        }
+        
+        last_api_call = now;
     }
     
-        // Вызываем API для обновления на dashboard
-        int err = 0;
-        DashboardAPI::the().callClientChange(legit_clients_count_, malicious_clients_count_, &err);
-        
-        if (err != 0) {
-            LOG_WARN("Failed to update clients stats on dashboard, error: " + std::to_string(err));
-        } else {
-            LOG_DEBUG("Clients stats updated: " + std::to_string(legit_clients_count_) + 
-                     " legit, " + std::to_string(malicious_clients_count_) + " malicious");
-        }
+    // Вызываем API для обновления на dashboard (без блокировки основных мьютексов)
+    int err = 0;
+    DashboardAPI::the().callClientChange(legit_clients_count_, malicious_clients_count_, &err);
+    
+    if (err != 0) {
+        LOG_WARN("Failed to update clients stats on dashboard, error: " + std::to_string(err));
+    } else {
+        LOG_DEBUG("Clients stats updated: " + std::to_string(legit_clients_count_) + 
+                 " legit, " + std::to_string(malicious_clients_count_) + " malicious");
     }
+}
 
 void LoadBalancer::stop() {
     if (!running_.exchange(false)) return;
@@ -995,6 +1021,7 @@ std::string LoadBalancer::strategy_to_string(RoutingStrategy strategy) {
 }
 
 void LoadBalancer::remove_client(const std::string& client_ip) {
+    bool was_removed = false;
     {
         std::lock_guard<std::mutex> lock(mapping_mutex_);
         auto it = client_backend_mapping_.find(client_ip);
@@ -1004,6 +1031,7 @@ void LoadBalancer::remove_client(const std::string& client_ip) {
                 release_backend(it->second->id);
             }
             client_backend_mapping_.erase(it);
+            was_removed = true;
         }
     }
     
@@ -1018,9 +1046,8 @@ void LoadBalancer::start_stats_updater(std::chrono::seconds interval) {
 
     stats_updater_thread_ = std::thread([this, interval]() {
         while (stats_updater_running_.load()) {
-            // Периодически обновляем статистику
+            // Обновляем статистику только периодически, а не постоянно
             updateClientsStats();
-            DashboardAPI::the().callAgentChange(real_backends_.size(), honeypot_backends_.size());
             
             // Используем таймаут с проверкой флага
             for (int i = 0; i < interval.count() && stats_updater_running_.load(); ++i) {
