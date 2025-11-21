@@ -28,6 +28,7 @@ public:
     void connect();
     bool is_connected() const;
     pqxx::connection& get_connection();
+    bool create_table_safely(pqxx::connection &conn, const std::string &table_name);
 
 private:
     std::string build_connection_string() const;

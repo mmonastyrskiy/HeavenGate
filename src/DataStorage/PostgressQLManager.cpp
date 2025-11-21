@@ -10,6 +10,7 @@
 #include "../common/Confparcer.h"
 #include "../common/logger.h"
 #include "PostgressQLManager.hpp"
+#include "PostgressQL_query.hpp"
 
 // Constructor
 PostgressQLManager::PostgressQLManager() : connection(nullptr) {
@@ -76,4 +77,27 @@ pqxx::connection& PostgressQLManager::get_connection() {
         throw std::runtime_error("No active database connection");
     }
     return *connection;
+}
+bool PostgressQLManager::create_table_safely(pqxx::connection &conn, const std::string &table_name){
+    try {
+        pqxx::work txn(conn);
+
+        pqxx::result res = txn.exec_params("SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = $1)",
+        table_name
+    );
+    if(res[0][0].as<bool>()){
+        LOG_INFO("Table " + table_name + " already exists");
+        txn.commit();
+        return false;
+    }
+    txn.exec(get_create_statement(
+        string2table(table_name)
+    ));
+    txn.commit();
+
+
+    }
+    catch(const std::exception& e){
+        LOG_ERROR("PSQL Error: " + std::string(e.what()));
+    }
 }

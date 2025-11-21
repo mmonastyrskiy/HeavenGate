@@ -42,6 +42,7 @@ set(HEADER_FILES
     DataStorage/geo2ip.h
     DataStorage/PostgressQLManager.hpp
     DataStorage/ElasticStorage.hpp
+    DataStorage/PostgressQL_query.hpp
     LoadBalancer/LoadBalancer.h
     ReqClassifier/ReqParser.hpp
 )
