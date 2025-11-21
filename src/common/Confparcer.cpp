@@ -19,7 +19,7 @@
 Confparcer& Confparcer::the() {
     static Confparcer c;
     c.parce();
-    LOG_INFO("Confparcer parce called");
+    //LOG_INFO("Confparcer parce called");
     return c;
 }
 

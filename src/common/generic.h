@@ -9,6 +9,8 @@
 
 #pragma once
 #include "logger.h"
+#include "../LoadBalancer/LoadBalancer.h"
+
 #ifndef ISLINUX
     #if defined(__linux__) || defined(linux) || defined(__linux)
         #define ISLINUX 1
@@ -32,5 +34,8 @@
 
 #define KDEBUG 1 // TODO: CHANGE ON RELEASE
 
+#if not defined KDEBUG && defined ALLGOOD
+LOG_FATAL("THIS IS IMPOSIBBLE COMPILE A DEBUG BUILD");
+#endif
 
 

@@ -210,7 +210,6 @@ target_link_libraries(heavengate PRIVATE
     maxminddb
     PostgreSQL::PostgreSQL
 
-    # TODO: может нам не надо столько зависимостей и переехать всем на pkg_check_modules?
 
 )
 

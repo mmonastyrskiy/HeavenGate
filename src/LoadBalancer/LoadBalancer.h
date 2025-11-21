@@ -5,9 +5,8 @@
  * Author: mmonastyrskiy
  */
 
-#ifndef LOADBALANCER_H
-#define LOADBALANCER_H
 
+#pragma once
 #include <string>
 #include <vector>
 #include <memory>
@@ -175,4 +174,8 @@ private:
     void read_from_backend_and_forward(ClientConnection::Ptr client);
 };
 
-#endif // LOADBALANCER_H
+
+// Режим работы: если определено ALLGOOD, все запросы идут на реальные серверы без классификации
+#define ALLGOOD // TODO: COMMENT ME ON PROD
+
+

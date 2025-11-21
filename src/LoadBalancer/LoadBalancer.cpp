@@ -17,8 +17,7 @@
 #include "../DataStorage/geo2ip.h"
 #include "../common/rand.h"
 
-// Режим работы: если определено ALLGOOD, все запросы идут на реальные серверы без классификации
-#define ALLGOOD
+
 
 // ClientConnection implementation
 ClientConnection::ClientConnection(asio::io_context& io_context, const std::string& ip)
@@ -176,7 +175,7 @@ LoadBalancer::~LoadBalancer() {
     }
 }
 
-void LoadBalancer::start(int port) {
+void LoadBalancer::start(int port) { // TODO: MOVE PORT TO CONFIG
     if (running_.exchange(true)) return;
 
     try {
@@ -187,9 +186,9 @@ void LoadBalancer::start(int port) {
         acceptor_.listen();
 
 #ifdef ALLGOOD
-        LOG_INFO("LoadBalancer started on port " + std::to_string(port) + " [ALLGOOD MODE - direct routing to real backends]");
+        LOG_WARN("LoadBalancer started on port " + std::to_string(port) + "Having RunID: " + runID +" [ALLGOOD MODE - direct routing to real backends]");
 #else
-        LOG_INFO("LoadBalancer started on port " + std::to_string(port) + " [CLASSIFICATION MODE]");
+        LOG_INFO("LoadBalancer started on port " + std::to_string(port) + "Having RunID: " + runID + " [CLASSIFICATION MODE]");
 #endif
 
         server_thread_ = std::thread([this]() {
@@ -243,6 +242,7 @@ void LoadBalancer::handle_accept(ClientConnection::Ptr client, const asio::error
         );
 
         LOG_INFO("New client connected: " + client->client_ip + " FROM: " + client->countryCode);
+
 
 #ifdef ALLGOOD
         // РЕЖИМ ALLGOOD: сразу маршрутизируем на реальный бэкенд
