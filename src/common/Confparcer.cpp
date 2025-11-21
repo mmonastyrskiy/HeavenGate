@@ -25,14 +25,14 @@ Confparcer& Confparcer::the() {
 
 int Confparcer::parce() {
     std::string path = getconfig();
-    LOG_DEBUG("Got config file " + path);
+    //LOG_DEBUG("Got config file " + path);
     std::ifstream cfile(path); 
     
     if (!cfile.is_open()) {
         LOG_FATAL("Failed to open config file, please check the path");
         return ErrorCodes::CONFIG_NOT_OPENED;
     }
-    LOG_DEBUG("Opened config file " + path);
+    //LOG_DEBUG("Opened config file " + path);
     
     std::string line;
     int line_num = 1;

@@ -36,12 +36,12 @@ std::string get(const std::string& key, int* error_code) const;
 template<typename T>
 static T SETTING(const std::string& sett, const T& default_value = T{}) {
     std::string arg = Argparcer::Argparcer::the().get(sett);
-    LOG_DEBUG("gOT VALUES FROM ARGS " +arg);
+    //LOG_DEBUG("gOT VALUES FROM ARGS " +arg);
     int e = 0;
     auto confparcer = Confparcer::the();
     confparcer.parce();
     auto conf = confparcer.get(sett,&e);
-    LOG_DEBUG("GOT VALUES FROM CONFIG AND ARGS " + conf);
+    //LOG_DEBUG("GOT VALUES FROM CONFIG AND ARGS " + conf);
     
     std::string value;
     
