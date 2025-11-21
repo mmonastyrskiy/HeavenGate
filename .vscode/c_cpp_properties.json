@@ -3,7 +3,8 @@
         {
             "name": "Win32",
             "includePath": [
-                "${workspaceFolder}/**"
+                "${workspaceFolder}/**",
+                "C:\\ProgramData\\chocolatey\\lib\\curl\\tools\\curl-8.17.0_1-win64-mingw\\include"
             ],
             "defines": [
                 "_DEBUG",

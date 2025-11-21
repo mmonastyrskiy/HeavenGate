@@ -144,10 +144,6 @@ find_package(CURL QUIET)
 #Поиск постгресс
 find_package(PostgreSQL REQUIRED)
 find_package(libpqxx REQUIRED)
-find_package(PkgConfig REQUIRED)
-
-
-pkg_check_modules(ELASTICSEARCH REQUIRED elasticsearch)
 
 
 
@@ -215,10 +211,6 @@ target_link_libraries(heavengate PRIVATE
 
 )
 
-
-target_link_libraries(string_storage ${ELASTICSEARCH_LIBRARIES})
-target_include_directories(string_storage PRIVATE ${ELASTICSEARCH_INCLUDE_DIRS})
-target_compile_options(string_storage PRIVATE ${ELASTICSEARCH_CFLAGS_OTHER})
 # Компиляционные флаги
 if(MSVC)
     target_compile_options(heavengate PRIVATE /W4)
