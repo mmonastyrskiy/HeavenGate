@@ -17,6 +17,9 @@
 #include "../DataStorage/geo2ip.h"
 #include "../common/rand.h"
 
+// Режим работы: если определено ALLGOOD, все запросы идут на реальные серверы без классификации
+#define ALLGOOD
+
 // ClientConnection implementation
 ClientConnection::ClientConnection(asio::io_context& io_context, const std::string& ip)
     : client_ip(ip), socket(io_context) {
@@ -163,7 +166,11 @@ void LoadBalancer::start(int port) {
         acceptor_.bind(endpoint);
         acceptor_.listen();
 
-        LOG_INFO("LoadBalancer started on port " + std::to_string(port));
+#ifdef ALLGOOD
+        LOG_INFO("LoadBalancer started on port " + std::to_string(port) + " [ALLGOOD MODE - direct routing to real backends]");
+#else
+        LOG_INFO("LoadBalancer started on port " + std::to_string(port) + " [CLASSIFICATION MODE]");
+#endif
 
         server_thread_ = std::thread([this]() {
             start_accept();
@@ -201,6 +208,7 @@ void LoadBalancer::handle_accept(ClientConnection::Ptr client, const asio::error
 
         geo2ip geo_detector;
         client->countryCode = geo_detector.getCountryByIP(client->client_ip);
+        
         // Publish new client connection event
         DataBus::instance().publish(
             BusEventType::NEW_CLIENT_CONNECTION,
@@ -208,41 +216,32 @@ void LoadBalancer::handle_accept(ClientConnection::Ptr client, const asio::error
             nlohmann::json{
                 {"client_ip", client->client_ip},
                 {"client_id", client->client_id},
-                {"Ip2GEO",client->countryCode},
+                {"Ip2GEO", client->countryCode},
                 {"timestamp", std::chrono::duration_cast<std::chrono::milliseconds>(
                     std::chrono::system_clock::now().time_since_epoch()).count()}
             }
         );
-        
 
-        LOG_INFO("New client connected: " + client->client_ip + "FROM: " + client->countryCode);
-        
+        LOG_INFO("New client connected: " + client->client_ip + " FROM: " + client->countryCode);
 
-        //TODO: UNCOMMENT WHEN CLASSIFIER READY AND MAKE LOGIC CONSISTENT 
-
-        /*// Start handling client requests
-        handle_client_request(client);
-        
-        // Continue accepting new connections
-        start_accept();
-    } else {
-        LOG_ERROR("Accept error: " + error.message());
-        if (running_.load()) {
-            start_accept();
-        }
-            */
-           auto backend = select_backend(false, client->client_ip); // false = не malicious (реальный сервер)
+#ifdef ALLGOOD
+        // РЕЖИМ ALLGOOD: сразу маршрутизируем на реальный бэкенд
+        auto backend = select_backend(false, client->client_ip); // false = не malicious
         
         if (backend) {
-            LOG_INFO("Immediately routing client " + client->client_ip + " to backend: " + backend->id);
+            LOG_INFO("ALLGOOD MODE: Routing client " + client->client_ip + " to real backend: " + backend->id);
             assign_backend_to_client(client->client_ip, backend);
             
-            // Сразу начинаем проксирование
-            proxy_to_backend(client, backend);
+            // Устанавливаем соединение с бэкендом
+            connect_to_backend(client, backend);
         } else {
             LOG_ERROR("No available real backends for client: " + client->client_ip);
             client->close();
         }
+#else
+        // ОРИГИНАЛЬНЫЙ РЕЖИМ: отправляем на классификацию
+        handle_client_request(client);
+#endif
         
         // Continue accepting new connections
         start_accept();
@@ -250,47 +249,162 @@ void LoadBalancer::handle_accept(ClientConnection::Ptr client, const asio::error
         LOG_ERROR("Accept error: " + error.message());
         if (running_.load()) {
             start_accept();
-    }
-}
-        
-}
-
-void LoadBalancer::handle_client_request(ClientConnection::Ptr client) {
-    // Check if client already has assigned backend
-    auto assigned_backend = get_assigned_backend(client->client_ip);
-    
-    if (!assigned_backend) {
-        // For initial request, send to classifier first
-        LOG_INFO("New request from new client");
-        //read_from_client(client); //TODO: THIS IS TEMPORARY FIX TO TEST THEN WE HAVE TO MAKE THE LOGIC CONSISTENT 
-        auto backend = select_backend(false, client->client_ip);
-        if (backend) {
-            LOG_INFO("Routing new client " + client->client_ip + " to backend: " + backend->id);
-            assign_backend_to_client(client->client_ip, backend);
-            proxy_to_backend(client, backend);
-        } else {
-            LOG_ERROR("No backends available for client: " + client->client_ip);
-            client->close();
         }
-    } else {
-        // Client already classified, proxy directly to assigned backend
-        proxy_to_backend(client, assigned_backend);
-        LOG_INFO("New request from assigned client");
     }
 }
 
-void LoadBalancer::read_from_client(ClientConnection::Ptr client) {
+void LoadBalancer::connect_to_backend(ClientConnection::Ptr client, std::shared_ptr<BackendNode> backend) {
+    try {
+        client->backend_socket = std::make_shared<asio::ip::tcp::socket>(io_context_);
+        
+        asio::ip::tcp::endpoint backend_ep(
+            asio::ip::make_address(backend->host), backend->port);
+        
+        LOG_DEBUG("Connecting to backend: " + backend->host + ":" + std::to_string(backend->port));
+        
+        client->backend_socket->async_connect(backend_ep,
+            [this, client, backend](const asio::error_code& error) {
+                if (!error) {
+                    LOG_INFO("Successfully connected to backend: " + backend->id);
+                    
+                    // Начинаем двустороннее проксирование
+                    start_proxying(client);
+                } else {
+                    LOG_ERROR("Backend connection failed to " + backend->host + ":" + 
+                             std::to_string(backend->port) + " - " + error.message());
+                    client->close();
+                    release_backend(backend->id);
+                    
+                    // Пытаемся найти другой бэкенд
+                    auto new_backend = select_backend(false, client->client_ip);
+                    if (new_backend && new_backend->id != backend->id) {
+                        LOG_INFO("Retrying with different backend: " + new_backend->id);
+                        connect_to_backend(client, new_backend);
+                    } else {
+                        LOG_ERROR("No alternative backends available for client: " + client->client_ip);
+                    }
+                }
+            });
+    } catch (const std::exception& e) {
+        LOG_ERROR("Connection error: " + std::string(e.what()));
+        client->close();
+        release_backend(backend->id);
+    }
+}
+
+void LoadBalancer::start_proxying(ClientConnection::Ptr client) {
+    // Начинаем читать от клиента и отправлять в бэкенд
+    read_from_client_and_forward(client);
+    
+    // Начинаем читать от бэкенда и отправлять клиенту
+    read_from_backend_and_forward(client);
+}
+
+void LoadBalancer::read_from_client_and_forward(ClientConnection::Ptr client) {
     auto buffer = std::make_shared<std::vector<char>>(8192);
     
     client->socket.async_read_some(asio::buffer(*buffer),
         [this, client, buffer](const asio::error_code& error, size_t bytes_read) {
             if (!error && bytes_read > 0) {
-                // Publish request to classifier
                 std::string request_data(buffer->data(), bytes_read);
-                //TODO:
-                //Classifier::Preprocessor.ParseRequest(client, request_data);
+                LOG_DEBUG("Forwarding " + std::to_string(bytes_read) + " bytes from client to backend");
+                
+                // Отправляем данные в бэкенд
+                if (client->backend_socket && client->backend_socket->is_open()) {
+                    asio::async_write(*client->backend_socket,
+                        asio::buffer(buffer->data(), bytes_read),
+                        [this, client](const asio::error_code& error, size_t bytes_written) {
+                            if (!error) {
+                                // Продолжаем чтение от клиента
+                                read_from_client_and_forward(client);
+                            } else {
+                                LOG_ERROR("Write to backend failed: " + error.message());
+                                client->close();
+                            }
+                        });
+                } else {
+                    LOG_WARN("Backend socket not ready, closing client connection");
+                    client->close();
+                }
+                
+            } else if (error != asio::error::operation_aborted) {
+                if (error) {
+                    LOG_DEBUG("Client disconnected: " + error.message());
+                }
+                client->close();
+            }
+        });
+}
 
-                /*DataBus::instance().publish(
+void LoadBalancer::read_from_backend_and_forward(ClientConnection::Ptr client) {
+    auto buffer = std::make_shared<std::vector<char>>(8192);
+    
+    if (client->backend_socket && client->backend_socket->is_open()) {
+        client->backend_socket->async_read_some(asio::buffer(*buffer),
+            [this, client, buffer](const asio::error_code& error, size_t bytes_read) {
+                if (!error && bytes_read > 0) {
+                    LOG_DEBUG("Forwarding " + std::to_string(bytes_read) + " bytes from backend to client");
+                    
+                    // Отправляем данные клиенту
+                    asio::async_write(client->socket,
+                        asio::buffer(buffer->data(), bytes_read),
+                        [this, client](const asio::error_code& error, size_t bytes_written) {
+                            if (!error) {
+                                // Продолжаем чтение от бэкенда
+                                read_from_backend_and_forward(client);
+                            } else {
+                                LOG_ERROR("Write to client failed: " + error.message());
+                                client->close();
+                            }
+                        });
+                } else if (error != asio::error::operation_aborted) {
+                    if (error) {
+                        LOG_DEBUG("Backend disconnected: " + error.message());
+                    }
+                    client->close();
+                }
+            });
+    }
+}
+
+void LoadBalancer::handle_client_request(ClientConnection::Ptr client) {
+#ifdef ALLGOOD
+    // В режиме ALLGOOD эта функция не должна вызываться, но на всякий случай
+    auto backend = select_backend(false, client->client_ip);
+    if (backend) {
+        assign_backend_to_client(client->client_ip, backend);
+        connect_to_backend(client, backend);
+    }
+#else
+    // Оригинальная логика с классификацией
+    auto assigned_backend = get_assigned_backend(client->client_ip);
+    
+    if (!assigned_backend) {
+        // For initial request, send to classifier first
+        LOG_INFO("New request from new client, sending to classifier");
+        read_from_client(client);
+    } else {
+        // Client already classified, proxy directly to assigned backend
+        proxy_to_backend(client, assigned_backend);
+        LOG_INFO("New request from assigned client");
+    }
+#endif
+}
+
+void LoadBalancer::read_from_client(ClientConnection::Ptr client) {
+#ifdef ALLGOOD
+    // В режиме ALLGOOD используем прямую пересылку
+    read_from_client_and_forward(client);
+#else
+    // Оригинальная логика с отправкой в классификатор
+    auto buffer = std::make_shared<std::vector<char>>(8192);
+    
+    client->socket.async_read_some(asio::buffer(*buffer),
+        [this, client, buffer](const asio::error_code& error, size_t bytes_read) {
+            if (!error && bytes_read > 0) {
+                std::string request_data(buffer->data(), bytes_read);
+                
+                DataBus::instance().publish(
                     BusEventType::REQUEST_FOR_CLASSIFICATION,
                     "load_balancer",
                     nlohmann::json{
@@ -303,11 +417,8 @@ void LoadBalancer::read_from_client(ClientConnection::Ptr client) {
                     }
                 );
                 
-                
                 LOG_DEBUG("Request sent to classifier from client: " + client->client_ip);
-*/
-                // TODO: THIS IS TEMPORARY THING JUST TO TEST PROXING 
-                LOG_DEBUG("Received " + std::to_string(bytes_read) + " bytes from client: " + client->client_ip);
+                
             } else if (error != asio::error::operation_aborted) {
                 LOG_WARN("Read from client failed: " + error.message());
                 
@@ -316,9 +427,19 @@ void LoadBalancer::read_from_client(ClientConnection::Ptr client) {
                 client->close();
             }
         });
+#endif
 }
 
 void LoadBalancer::proxy_to_backend(ClientConnection::Ptr client, std::shared_ptr<BackendNode> backend) {
+#ifdef ALLGOOD
+    // В режиме ALLGOOD используем прямое соединение
+    if (!client->backend_socket || !client->backend_socket->is_open()) {
+        connect_to_backend(client, backend);
+    } else {
+        start_proxying(client);
+    }
+#else
+    // Оригинальная логика
     try {
         if (!client->backend_socket) {
             client->backend_socket = std::make_shared<asio::ip::tcp::socket>(io_context_);
@@ -348,9 +469,15 @@ void LoadBalancer::proxy_to_backend(ClientConnection::Ptr client, std::shared_pt
         client->close();
         release_backend(backend->id);
     }
+#endif
 }
 
 void LoadBalancer::read_from_backend(ClientConnection::Ptr client) {
+#ifdef ALLGOOD
+    // В режиме ALLGOOD используем прямую пересылку
+    read_from_backend_and_forward(client);
+#else
+    // Оригинальная логика
     auto buffer = std::make_shared<std::vector<char>>(8192);
     
     if (client->backend_socket && client->backend_socket->is_open()) {
@@ -379,7 +506,10 @@ void LoadBalancer::read_from_backend(ClientConnection::Ptr client) {
                 }
             });
     }
+#endif
 }
+
+// Остальной код остается без изменений...
 
 void LoadBalancer::add_backend(std::shared_ptr<BackendNode> server_ptr) {
     std::lock_guard<std::mutex> lock(backends_mutex_);
@@ -411,6 +541,11 @@ void LoadBalancer::add_backend(std::shared_ptr<BackendNode> server_ptr) {
 
 std::shared_ptr<BackendNode> LoadBalancer::select_backend(bool is_malicious, const std::string& client_ip) {
     auto start_time = std::chrono::steady_clock::now();
+
+#ifdef ALLGOOD
+    // В режиме ALLGOOD всегда используем реальные бэкенды
+    is_malicious = false;
+#endif
 
     auto& backends = is_malicious ? honeypot_backends_ : real_backends_;
 
@@ -529,6 +664,11 @@ void LoadBalancer::release_backend(const std::string& server_id) {
 }
 
 void LoadBalancer::handle_classification(const Event& event) {
+#ifdef ALLGOOD
+    // В режиме ALLGOOD игнорируем классификацию
+    LOG_DEBUG("ALLGOOD MODE: Ignoring classification event");
+    return;
+#else
     if (event.data.contains("client_ip") && event.data.contains("classification")) {
         std::string client_ip = event.data["client_ip"];
         bool is_malicious = event.data["classification"] == "malicious";
@@ -558,6 +698,7 @@ void LoadBalancer::handle_classification(const Event& event) {
             LOG_ERROR("No available backend for client: " + client_ip);
         }
     }
+#endif
 }
 
 // Selection strategy implementations
@@ -842,7 +983,6 @@ void LoadBalancer::remove_client(const std::string& client_ip) {
     
     LOG_DEBUG("Client removed: " + client_ip);
 }
-
 
 void LoadBalancer::start_stats_updater(std::chrono::seconds interval) {
     if (stats_updater_running_.exchange(true)) return;

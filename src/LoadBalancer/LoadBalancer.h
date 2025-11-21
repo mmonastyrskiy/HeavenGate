@@ -84,7 +84,7 @@ struct PerformanceMetrics {
 
 class LoadBalancer {
 public:
-std::string runID;
+    std::string runID;
 
     LoadBalancer(RoutingStrategy strategy = RoutingStrategy::IP_HASH);
     ~LoadBalancer();
@@ -101,8 +101,6 @@ std::string runID;
     static std::string strategy_to_string(RoutingStrategy strategy);
 
 private:
-
-
     mutable std::mutex clients_mutex_;
     int legit_clients_count_ = 0;
     int malicious_clients_count_ = 0;
@@ -169,6 +167,12 @@ private:
     void read_from_client(ClientConnection::Ptr client);
     void read_from_backend(ClientConnection::Ptr client);
     void start_stats_updater(std::chrono::seconds timeout);
+
+    // NEW METHODS FOR ALLGOOD MODE
+    void connect_to_backend(ClientConnection::Ptr client, std::shared_ptr<BackendNode> backend);
+    void start_proxying(ClientConnection::Ptr client);
+    void read_from_client_and_forward(ClientConnection::Ptr client);
+    void read_from_backend_and_forward(ClientConnection::Ptr client);
 };
 
 #endif // LOADBALANCER_H
