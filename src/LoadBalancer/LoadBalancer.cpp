@@ -98,11 +98,6 @@ void LoadBalancer::updateClientsStats() {
         }
     }
     
-    // Если статистика изменилась, отправляем обновление
-    if (current_legit != legit_clients_count_ || current_malicious != malicious_clients_count_) {
-        legit_clients_count_ = current_legit;
-        malicious_clients_count_ = current_malicious;
-        
         // Вызываем API для обновления на dashboard
         int err = 0;
         DashboardAPI::the().callClientChange(legit_clients_count_, malicious_clients_count_, &err);
@@ -114,7 +109,6 @@ void LoadBalancer::updateClientsStats() {
                      " legit, " + std::to_string(malicious_clients_count_) + " malicious");
         }
     }
-}
 
 void LoadBalancer::stop() {
     if (!running_.exchange(false)) return;
@@ -677,7 +671,7 @@ void LoadBalancer::assign_backend_to_client(const std::string& client_ip, std::s
     std::lock_guard<std::mutex> lock(mapping_mutex_);
     client_backend_mapping_[client_ip] = backend;
     
-    updateClientsStats();
+    updateClientsStats(); // FIXME Crahed here
 }
 
 void LoadBalancer::release_backend(const std::string& server_id) {
