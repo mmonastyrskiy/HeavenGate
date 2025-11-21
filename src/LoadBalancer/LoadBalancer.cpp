@@ -671,7 +671,7 @@ void LoadBalancer::assign_backend_to_client(const std::string& client_ip, std::s
     std::lock_guard<std::mutex> lock(mapping_mutex_);
     client_backend_mapping_[client_ip] = backend;
     
-    updateClientsStats(); // FIXME Crahed here
+    //updateClientsStats(); // FIXME Crahed here
 }
 
 void LoadBalancer::release_backend(const std::string& server_id) {
@@ -715,7 +715,7 @@ void LoadBalancer::handle_classification(const Event& event) {
         auto backend = select_backend(is_malicious, client_ip);
         if (backend) {
             assign_backend_to_client(client_ip, backend);
-            updateClientsStats();
+            //updateClientsStats();
             
             // If we have client pointer, we can resume request processing
             if (client_ptr_val != 0) {
@@ -1008,7 +1008,7 @@ void LoadBalancer::remove_client(const std::string& client_ip) {
     }
     
     // Обновляем статистику после удаления клиента
-    updateClientsStats();
+    //updateClientsStats();
     
     LOG_DEBUG("Client removed: " + client_ip);
 }
