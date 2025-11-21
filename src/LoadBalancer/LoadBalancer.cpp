@@ -157,6 +157,9 @@ LoadBalancer::~LoadBalancer() {
 }
 
 void LoadBalancer::start(int port) {
+    #ifdef ALLGOOD
+    LOG_WARN("The server is running in the unclassified mode\n All requests will be forwarded to the real backends");
+    #endif
     if (running_.exchange(true)) return;
 
     try {
