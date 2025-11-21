@@ -59,8 +59,6 @@ int Confparcer::parce() {
         // Extract key and value
         std::string key = line.substr(0, div);
         std::string value = line.substr(div + 1);
-
-        LOG_DEBUG("Got option " + key + "with value " + value);
         
         // Trim whitespace from key and value
         key.erase(0, key.find_first_not_of(" \t"));
@@ -87,7 +85,7 @@ std::string Confparcer::get(const std::string& key, int* error_code = nullptr) c
         return "";
     }
     try {
-        LOG_DEBUG("Trying to get value from config");
+        //LOG_DEBUG("Trying to get value from config");
         std::string value = config.at(key);
         e = ErrorCodes::SUCCESS;
         return value;
@@ -100,7 +98,7 @@ std::string Confparcer::get(const std::string& key, int* error_code = nullptr) c
     }
 }
 std::string Confparcer::getconfig() const {
-    LOG_DEBUG("LOADING ENV");
+    //LOG_DEBUG("LOADING ENV");
     const char* env = std::getenv(HG_ENVKEY);
     
     std::filesystem::path base;
@@ -112,17 +110,17 @@ std::string Confparcer::getconfig() const {
         
         // Development path
         base = "/root/Documents/HeavenGate/";
-        LOG_DEBUG("LOADING base");
+        //LOG_DEBUG("LOADING base");
     } else {
-        LOG_INFO("USING ENV PATH");
+        //LOG_INFO("USING ENV PATH");
         base = env;
     }
     
     std::filesystem::path config = base / "config" / "default.ini";
-    LOG_DEBUG("LOADING path");
+    //LOG_DEBUG("LOADING path");
     return config.string();
 }
 Confparcer::Confparcer(){
     parce();
-    LOG_DEBUG("CONFPARCER PARSE CALLED");
+    //LOG_DEBUG("CONFPARCER PARSE CALLED");
 }
