@@ -157,9 +157,6 @@ LoadBalancer::~LoadBalancer() {
 }
 
 void LoadBalancer::start(int port) {
-    #ifdef ALLGOOD
-    LOG_WARN("The server is running in the unclassified mode\n All requests will be forwarded to the real backends");
-    #endif
     if (running_.exchange(true)) return;
 
     try {
@@ -269,12 +266,14 @@ void LoadBalancer::connect_to_backend(ClientConnection::Ptr client, std::shared_
             [this, client, backend](const asio::error_code& error) {
                 if (!error) {
                     LOG_INFO("Successfully connected to backend: " + backend->id);
+                    LOG_DEBUG("Backend socket is open: " + std::to_string(client->backend_socket->is_open()));
                     
                     // Начинаем двустороннее проксирование
                     start_proxying(client);
                 } else {
                     LOG_ERROR("Backend connection failed to " + backend->host + ":" + 
                              std::to_string(backend->port) + " - " + error.message());
+                    LOG_DEBUG("Error code: " + std::to_string(error.value()));
                     client->close();
                     release_backend(backend->id);
                     
@@ -296,6 +295,8 @@ void LoadBalancer::connect_to_backend(ClientConnection::Ptr client, std::shared_
 }
 
 void LoadBalancer::start_proxying(ClientConnection::Ptr client) {
+    LOG_DEBUG("Starting bidirectional proxying for client: " + client->client_ip);
+    
     // Начинаем читать от клиента и отправлять в бэкенд
     read_from_client_and_forward(client);
     
@@ -306,33 +307,45 @@ void LoadBalancer::start_proxying(ClientConnection::Ptr client) {
 void LoadBalancer::read_from_client_and_forward(ClientConnection::Ptr client) {
     auto buffer = std::make_shared<std::vector<char>>(8192);
     
+    LOG_DEBUG("Waiting for data from client: " + client->client_ip);
+    
     client->socket.async_read_some(asio::buffer(*buffer),
         [this, client, buffer](const asio::error_code& error, size_t bytes_read) {
             if (!error && bytes_read > 0) {
                 std::string request_data(buffer->data(), bytes_read);
-                LOG_DEBUG("Forwarding " + std::to_string(bytes_read) + " bytes from client to backend");
+                LOG_DEBUG("Received " + std::to_string(bytes_read) + " bytes from client: " + client->client_ip);
+                LOG_DEBUG("First 100 chars of request: " + std::string(buffer->data(), std::min(bytes_read, size_t(100))));
                 
                 // Отправляем данные в бэкенд
                 if (client->backend_socket && client->backend_socket->is_open()) {
+                    LOG_DEBUG("Backend socket is open, forwarding data to backend");
                     asio::async_write(*client->backend_socket,
                         asio::buffer(buffer->data(), bytes_read),
                         [this, client](const asio::error_code& error, size_t bytes_written) {
                             if (!error) {
+                                LOG_DEBUG("Successfully forwarded " + std::to_string(bytes_written) + " bytes to backend");
                                 // Продолжаем чтение от клиента
                                 read_from_client_and_forward(client);
                             } else {
                                 LOG_ERROR("Write to backend failed: " + error.message());
+                                LOG_DEBUG("Error code: " + std::to_string(error.value()));
                                 client->close();
                             }
                         });
                 } else {
-                    LOG_WARN("Backend socket not ready, closing client connection");
+                    LOG_WARN("Backend socket not ready or closed, closing client connection");
+                    LOG_DEBUG("Backend socket exists: " + std::to_string(client->backend_socket != nullptr));
+                    if (client->backend_socket) {
+                        LOG_DEBUG("Backend socket is open: " + std::to_string(client->backend_socket->is_open()));
+                    }
                     client->close();
                 }
                 
             } else if (error != asio::error::operation_aborted) {
                 if (error) {
-                    LOG_DEBUG("Client disconnected: " + error.message());
+                    LOG_DEBUG("Client read error: " + error.message() + " (code: " + std::to_string(error.value()) + ")");
+                } else {
+                    LOG_DEBUG("Client read: 0 bytes (connection closed?)");
                 }
                 client->close();
             }
@@ -343,36 +356,46 @@ void LoadBalancer::read_from_backend_and_forward(ClientConnection::Ptr client) {
     auto buffer = std::make_shared<std::vector<char>>(8192);
     
     if (client->backend_socket && client->backend_socket->is_open()) {
+        LOG_DEBUG("Waiting for data from backend for client: " + client->client_ip);
+        
         client->backend_socket->async_read_some(asio::buffer(*buffer),
             [this, client, buffer](const asio::error_code& error, size_t bytes_read) {
                 if (!error && bytes_read > 0) {
-                    LOG_DEBUG("Forwarding " + std::to_string(bytes_read) + " bytes from backend to client");
+                    LOG_DEBUG("Received " + std::to_string(bytes_read) + " bytes from backend for client: " + client->client_ip);
+                    LOG_DEBUG("First 100 chars of response: " + std::string(buffer->data(), std::min(bytes_read, size_t(100))));
                     
                     // Отправляем данные клиенту
                     asio::async_write(client->socket,
                         asio::buffer(buffer->data(), bytes_read),
                         [this, client](const asio::error_code& error, size_t bytes_written) {
                             if (!error) {
+                                LOG_DEBUG("Successfully forwarded " + std::to_string(bytes_written) + " bytes to client");
                                 // Продолжаем чтение от бэкенда
                                 read_from_backend_and_forward(client);
                             } else {
                                 LOG_ERROR("Write to client failed: " + error.message());
+                                LOG_DEBUG("Error code: " + std::to_string(error.value()));
                                 client->close();
                             }
                         });
                 } else if (error != asio::error::operation_aborted) {
                     if (error) {
-                        LOG_DEBUG("Backend disconnected: " + error.message());
+                        LOG_DEBUG("Backend read error: " + error.message() + " (code: " + std::to_string(error.value()) + ")");
+                    } else {
+                        LOG_DEBUG("Backend read: 0 bytes (connection closed?)");
                     }
                     client->close();
                 }
             });
+    } else {
+        LOG_DEBUG("Backend socket not available for reading, client: " + client->client_ip);
     }
 }
 
 void LoadBalancer::handle_client_request(ClientConnection::Ptr client) {
 #ifdef ALLGOOD
     // В режиме ALLGOOD эта функция не должна вызываться, но на всякий случай
+    LOG_DEBUG("handle_client_request called in ALLGOOD mode for client: " + client->client_ip);
     auto backend = select_backend(false, client->client_ip);
     if (backend) {
         assign_backend_to_client(client->client_ip, backend);
@@ -397,6 +420,7 @@ void LoadBalancer::handle_client_request(ClientConnection::Ptr client) {
 void LoadBalancer::read_from_client(ClientConnection::Ptr client) {
 #ifdef ALLGOOD
     // В режиме ALLGOOD используем прямую пересылку
+    LOG_DEBUG("read_from_client in ALLGOOD mode, using direct forwarding");
     read_from_client_and_forward(client);
 #else
     // Оригинальная логика с отправкой в классификатор
@@ -436,6 +460,7 @@ void LoadBalancer::read_from_client(ClientConnection::Ptr client) {
 void LoadBalancer::proxy_to_backend(ClientConnection::Ptr client, std::shared_ptr<BackendNode> backend) {
 #ifdef ALLGOOD
     // В режиме ALLGOOD используем прямое соединение
+    LOG_DEBUG("proxy_to_backend in ALLGOOD mode for client: " + client->client_ip);
     if (!client->backend_socket || !client->backend_socket->is_open()) {
         connect_to_backend(client, backend);
     } else {
@@ -478,6 +503,7 @@ void LoadBalancer::proxy_to_backend(ClientConnection::Ptr client, std::shared_pt
 void LoadBalancer::read_from_backend(ClientConnection::Ptr client) {
 #ifdef ALLGOOD
     // В режиме ALLGOOD используем прямую пересылку
+    LOG_DEBUG("read_from_backend in ALLGOOD mode, using direct forwarding");
     read_from_backend_and_forward(client);
 #else
     // Оригинальная логика
@@ -511,8 +537,6 @@ void LoadBalancer::read_from_backend(ClientConnection::Ptr client) {
     }
 #endif
 }
-
-// Остальной код остается без изменений...
 
 void LoadBalancer::add_backend(std::shared_ptr<BackendNode> server_ptr) {
     std::lock_guard<std::mutex> lock(backends_mutex_);
@@ -548,6 +572,7 @@ std::shared_ptr<BackendNode> LoadBalancer::select_backend(bool is_malicious, con
 #ifdef ALLGOOD
     // В режиме ALLGOOD всегда используем реальные бэкенды
     is_malicious = false;
+    LOG_DEBUG("ALLGOOD mode: forcing real backend selection for client: " + client_ip);
 #endif
 
     auto& backends = is_malicious ? honeypot_backends_ : real_backends_;
@@ -555,6 +580,7 @@ std::shared_ptr<BackendNode> LoadBalancer::select_backend(bool is_malicious, con
     if (backends.empty()) {
         stats_.routing_errors++;
         performance_.backend_selection_failures++;
+        LOG_DEBUG("No backends available for selection, is_malicious: " + std::to_string(is_malicious));
         return nullptr;
     }
 
@@ -570,6 +596,7 @@ std::shared_ptr<BackendNode> LoadBalancer::select_backend(bool is_malicious, con
     if (healthy_backends.empty()) {
         stats_.routing_errors++;
         performance_.backend_selection_failures++;
+        LOG_DEBUG("No healthy backends available for selection");
         return nullptr;
     }
 
@@ -629,8 +656,11 @@ std::shared_ptr<BackendNode> LoadBalancer::select_backend(bool is_malicious, con
         int err = 0;
         DashboardAPI::the().callRequestRegistered(client_ip, selected->id, is_malicious, &err);
 
+        LOG_DEBUG("Selected backend: " + selected->id + " for client: " + client_ip);
+
     } else {
         stats_.routing_errors++;
+        LOG_DEBUG("Backend selection failed for client: " + client_ip);
     }
 
     return selected;
