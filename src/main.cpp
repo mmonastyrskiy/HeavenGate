@@ -99,7 +99,7 @@ int main() {
             // Периодический вывод статистики
             auto now = std::chrono::steady_clock::now();
             if (now - last_stats_time >= stats_interval) {
-                printStats(balancer);
+                //printStats(balancer);
                 last_stats_time = now;
             }
         }

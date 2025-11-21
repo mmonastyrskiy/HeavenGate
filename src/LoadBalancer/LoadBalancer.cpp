@@ -231,6 +231,7 @@ void LoadBalancer::handle_accept(ClientConnection::Ptr client, const asio::error
         if (backend) {
             LOG_INFO("ALLGOOD MODE: Routing client " + client->client_ip + " to real backend: " + backend->id);
             assign_backend_to_client(client->client_ip, backend);
+            LOG_DEBUG("Backend assigned");
             
             // Устанавливаем соединение с бэкендом
             connect_to_backend(client, backend);
@@ -675,6 +676,7 @@ std::shared_ptr<BackendNode> LoadBalancer::get_assigned_backend(const std::strin
 void LoadBalancer::assign_backend_to_client(const std::string& client_ip, std::shared_ptr<BackendNode> backend) {
     std::lock_guard<std::mutex> lock(mapping_mutex_);
     client_backend_mapping_[client_ip] = backend;
+    
     updateClientsStats();
 }
 
