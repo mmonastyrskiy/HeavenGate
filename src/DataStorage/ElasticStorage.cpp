@@ -3,6 +3,8 @@
 #include <sstream>
 #include <curl/curl.h>
 #include "../../thirdparty/json.hpp"
+#include "../common/logger.h"
+#include "../common/Confparcer.h"
 
 // Callback function to write response data
 size_t SimpleElasticsearchClient::writeCallback(void* contents, size_t size, size_t nmemb, void* userp) {
@@ -14,7 +16,7 @@ size_t SimpleElasticsearchClient::writeCallback(void* contents, size_t size, siz
 
 SimpleElasticsearchClient::SimpleElasticsearchClient(const std::string& host, int port) 
     : host(host), port(port) {
-    base_url = "http://" + host + ":" + std::to_string(port);
+    base_url = "http://" + Confparcer::SETTING<std::string>("ELASTIC_HOST","127.0.0.1")+ ":" + Confparcer::SETTING<std::string>("ELASTIC_PORT","127.0.0.1");
     curl_global_init(CURL_GLOBAL_DEFAULT);
 }
 
@@ -29,6 +31,7 @@ std::string SimpleElasticsearchClient::httpRequest(const std::string& method,
     std::string response;
     
     if (!curl) {
+        LOG_FATAL("Fatal failed to curl");
         return "{\"error\": \"Failed to initialize CURL\"}";
     }
 
@@ -73,6 +76,7 @@ std::string SimpleElasticsearchClient::httpRequest(const std::string& method,
     curl_easy_cleanup(curl);
     
     if (res != CURLE_OK) {
+        LOG_ERROR(std::string(curl_easy_strerror(res)));
         return "{\"error\": \"" + std::string(curl_easy_strerror(res)) + "\"}";
     }
     

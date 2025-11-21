@@ -143,8 +143,8 @@ endif()
 find_package(CURL QUIET)
 #Поиск постгресс
 find_package(PostgreSQL REQUIRED)
-find_package(libpqxx REQUIRED)
-
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(LIBPQXX REQUIRED libpqxx)
 
 
 if(NOT CURL_FOUND)
@@ -192,6 +192,7 @@ endif()
 target_include_directories(heavengate PRIVATE
     ${CMAKE_SOURCE_DIR}/include
     ${CMAKE_SOURCE_DIR}/thirdparty
+    ${LIBPQXX_INCLUDE_DIRS}
     ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
@@ -199,6 +200,7 @@ target_include_directories(heavengate PRIVATE
 target_link_libraries(heavengate PRIVATE
     pthread
     ${CURL_TARGET}
+    ${LIBPQXX_LIBRARIES}
     ${PLATFORM_LIBS}
     json_header_only
     colorText
@@ -208,6 +210,7 @@ target_link_libraries(heavengate PRIVATE
     maxminddb
     PostgreSQL::PostgreSQL
 
+    # TODO: может нам не надо столько зависимостей и переехать всем на pkg_check_modules?
 
 )
 
