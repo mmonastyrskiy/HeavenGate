@@ -198,7 +198,7 @@ void LoadBalancer::start(int port) {
         });
 
         //start_health_checks(); TODO: UNCOMMENT WHEN BACKENDS WILL BE ONLINE 
-        int timeout = Confparcer::SETTING<int>("DASHBOARD_AUTOUPDATE_PERIOD",30);
+        int timeout = Confparcer::SETTING<int>("DASHBOARD_AUTOUPDATE_PERIOD",10);
         start_stats_updater(std::chrono::seconds(timeout)); // Обновляем статистику каждые 30 секунд
 
     } catch (const std::exception& e) {
@@ -1036,7 +1036,7 @@ void LoadBalancer::remove_client(const std::string& client_ip) {
     }
     
     // Обновляем статистику после удаления клиента
-    //updateClientsStats();
+    //updateClientsStats(); //FIXME: This function hangs for some reason
     
     LOG_DEBUG("Client removed: " + client_ip);
 }
