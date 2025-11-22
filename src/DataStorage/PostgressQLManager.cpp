@@ -76,9 +76,9 @@ pqxx::connection& PostgressQLManager::get_connection() {
 }
 bool PostgressQLManager::create_table_safely(pqxx::connection &conn, const std::string &table_name){
     try {
+        conn.prepare("my_query", "SELECT * FROM my_table WHERE id = $1"); //TODO REWORK ALL LIB TO THE PREPARED STATEMENTS?
         pqxx::work txn(conn);
-
-pqxx::result res = txn.exec("SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = $1)", pqxx::zview{table_name});
+pqxx::result res = txn.exec_prepared(table_name);
 
     if(res[0][0].as<bool>()){
         LOG_INFO("Table " + table_name + " already exists");

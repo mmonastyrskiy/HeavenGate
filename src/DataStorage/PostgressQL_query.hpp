@@ -9,7 +9,7 @@ enum class PSQLTables {
 };
 
 
-typedef struct table_description {
+struct table_description {
     std::vector<std::string> cols;
     std::string create;
 };
