@@ -626,8 +626,7 @@ void LoadBalancer::read_from_backend(ClientConnection::Ptr client) {
                                                  pgm.connect();
                                                  auto& conn = pgm.get_connection();
                                                  std::vector<std::pair<std::string, std::string>> set_values = {
-                                                    {"is_active", "false"}
-                                                };
+                                                    {"is_active", "false"}};
                                                 std::vector<std::pair<std::string, std::string> where_conditions = {
 
                                                     {"user_id", client->client_id}
