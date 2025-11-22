@@ -3,10 +3,9 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <pqxx/pqxx>
 // Forward declaration
-namespace pqxx {
-    class connection;
-}
+
 
 class PostgressQLManager {
 private:

@@ -10,12 +10,15 @@
 #include <algorithm>
 #include <iostream>
 #include <random>
+#include <vector>
 #include <functional>
 #include "../API/dashboardAPI.h"
 #include "../common/Confparcer.h"
 #include "../common/generic.h"
 #include "../DataStorage/geo2ip.h"
+#include "../DataStorage/PostgressQLManager.hpp"
 #include "../common/rand.h"
+#include <pqxx/pqxx>
 
 
 
@@ -225,7 +228,10 @@ void LoadBalancer::handle_accept(ClientConnection::Ptr client, const asio::error
             client->client_ip = remote_ep.address().to_string();
         }
 
-        geo2ip geo_detector;
+        geo2ip geo_detector; // FIXME: It is reopened on each user... This is terrible
+        PostgressQLManager pgm;
+        pgm.connect();
+        auto& conn = pgm.get_connection();
         client->countryCode = geo_detector.getCountryByIP(client->client_ip);
         
         // Publish new client connection event
@@ -241,7 +247,12 @@ void LoadBalancer::handle_accept(ClientConnection::Ptr client, const asio::error
             }
         );
 
+
         LOG_INFO("New client connected: " + client->client_ip + " FROM: " + client->countryCode);
+        std::vector<std::string> vals = {client->client_id,client->client_ip,client->countryCode,std::to_string(
+            std::chrono::duration_cast<std::chrono::milliseconds>(
+                    std::chrono::system_clock::now().time_since_epoch()).count())};
+        pgm.insert_safely(conn,"clinets",vals);
 
 
 #ifdef ALLGOOD

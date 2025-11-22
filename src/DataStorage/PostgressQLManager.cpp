@@ -1,8 +1,4 @@
-
-// Include pqxx headers - adjust path based on your setup
 #include <pqxx/pqxx>
-// OR if using local build:
-// #include "path/to/your/pqxx/include/pqxx/pqxx"
 #include "../../thirdparty/libpqxx/src/pqxx-source.hxx"
 #include <string>
 #include <cstdlib>
@@ -94,6 +90,7 @@ bool PostgressQLManager::create_table_safely(pqxx::connection &conn, const std::
         get_create_statement(table);
 
     txn.commit();
+    return true;
 
 
     }
