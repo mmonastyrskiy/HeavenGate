@@ -25,34 +25,34 @@ public:
     PostgressQLManager& operator=(PostgressQLManager&&) = default;
 
     // Public methods
-    void connect();
-    bool is_connected() const;
+    void PostgressQLManager::connect();
+    bool PostgressQLManager::is_connected() const;
     pqxx::connection& get_connection();
-    bool create_table_safely(pqxx::connection &conn, const std::string &table_name);
-    bool insert_safely(pqxx::connection& conn, const std::string &table_name,std::vector<std::string>& values);
-    bool insert_safely(pqxx::connection& conn, const std::string &table_name,std::vector<std::vector<std::string>>& values);
+    bool PostgressQLManager::create_table_safely(pqxx::connection &conn, const std::string &table_name);
+    bool PostgressQLManager::insert_safely(pqxx::connection& conn, const std::string &table_name,std::vector<std::string>& values);
+    bool PostgressQLManager::insert_safely(pqxx::connection& conn, const std::string &table_name,std::vector<std::vector<std::string>>& values);
     bool PostgressQLManager::insert_safely_in_transaction(pqxx::work& txn,
                                                     const std::string& table_name,
                                                     std::vector<std::string>& values);
 
-    bool bulk_insert_copy(pqxx::connection& conn, 
+    bool PostgressQLManager::bulk_insert_copy(pqxx::connection& conn, 
                                         const std::string& table_name,
                                         std::vector<std::vector<std::string>>& values);
-     bool insert_safely(pqxx::connection& conn, 
+     bool PostgressQLManager::insert_safely(pqxx::connection& conn, 
                       const std::string& table_name,
                       std::vector<std::string>& values);
     
-    bool insert_safely(pqxx::connection& conn, 
+    bool PostgressQLManager::insert_safely(pqxx::connection& conn, 
                       const std::string& table_name,
                       std::vector<std::vector<std::string>>& values);
     
     // Обновление
-    bool safe_update(pqxx::connection& conn,
+    bool PostgressQLManager::safe_update(pqxx::connection& conn,
                     const std::string& table_name,
                     const std::vector<std::pair<std::string, std::string>>& set_values,
                     const std::vector<std::pair<std::string, std::string>>& where_conditions);
     
-    bool safe_update(pqxx::connection& conn,
+    bool PostgressQLManager::safe_update(pqxx::connection& conn,
                     const std::string& table_name,
                     const std::vector<std::pair<std::pair<std::string, std::string>, 
                     std::vector<std::pair<std::string, std::string>>>>& updates);
