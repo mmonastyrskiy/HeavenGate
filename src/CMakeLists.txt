@@ -45,6 +45,7 @@ set(HEADER_FILES
     DataStorage/PostgressQL_query.hpp
     LoadBalancer/LoadBalancer.h
     ReqClassifier/ReqParser.hpp
+    ReqClassifier/ReqClassifier.hpp
 )
 
 # ==================== GO DASHBOARD ====================

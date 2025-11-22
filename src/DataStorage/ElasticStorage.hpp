@@ -4,7 +4,9 @@
 #include <string>
 #include <map>
 #include <memory>
+#include <string_view>
 
+constexpr const char* REQ_INDEX = "Requests";
 class SimpleElasticsearchClient {
 private:
     std::string host;

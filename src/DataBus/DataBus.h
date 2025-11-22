@@ -32,6 +32,7 @@
 #include "DataBusMetrics.h"
 #include "../common/Confparcer.h"
 
+//TODO: А нужна ли нам шина?
 class DataBus {
 public:
         const size_t MAX_QUEUE_SIZE = []() {

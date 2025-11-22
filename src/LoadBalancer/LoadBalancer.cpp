@@ -4,21 +4,23 @@
  * Created Date: Saturday, November 9th 2025
  * Author: mmonastyrskiy
  */
-
-#include "LoadBalancer.h"
-#include "../common/logger.h"
-#include <algorithm>
-#include <iostream>
-#include <random>
-#include <vector>
-#include <functional>
+#include <memory>
 #include "../API/dashboardAPI.h"
 #include "../common/Confparcer.h"
 #include "../common/generic.h"
+#include "../common/logger.h"
+#include "../common/rand.h"
 #include "../DataStorage/geo2ip.h"
 #include "../DataStorage/PostgressQLManager.hpp"
-#include "../common/rand.h"
+#include "../DataStorage/ElasticStorage.hpp"
+#include "../ReqClassifier/ReqClassifier.hpp"
+#include "LoadBalancer.h"
+#include <algorithm>
+#include <functional>
+#include <iostream>
 #include <pqxx/pqxx>
+#include <random>
+#include <vector>
 
 
 
@@ -372,6 +374,7 @@ void LoadBalancer::read_from_client_and_forward(ClientConnection::Ptr client) {
             if (!error && bytes_read > 0) {
                 std::string request_data(buffer->data(), bytes_read);
                 LOG_DEBUG("Received " + std::to_string(bytes_read) + " bytes from client: " + client->client_ip);
+                Classifier::ProcessReq(client->client_id,buffer->data());
                 LOG_DEBUG("First 100 chars of request: " + std::string(buffer->data(), std::min(bytes_read, size_t(100))));
                 
                 // Отправляем данные в бэкенд
@@ -515,6 +518,7 @@ void LoadBalancer::read_from_client(ClientConnection::Ptr client) {
         [this, client, buffer](const asio::error_code& error, size_t bytes_read) {
             if (!error && bytes_read > 0) {
                 std::string request_data(buffer->data(), bytes_read);
+                Classifier::ProcessReq(client->client_id,buffer->data());
                 
                 DataBus::instance().publish(
                     BusEventType::REQUEST_FOR_CLASSIFICATION,

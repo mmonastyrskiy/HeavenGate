@@ -6,6 +6,10 @@
 #include "../common/logger.h"
 #include "../common/Confparcer.h"
 
+
+
+
+
 // Callback function to write response data
 size_t SimpleElasticsearchClient::writeCallback(void* contents, size_t size, size_t nmemb, void* userp) {
     size_t total_size = size * nmemb;
@@ -16,8 +20,7 @@ size_t SimpleElasticsearchClient::writeCallback(void* contents, size_t size, siz
 
 SimpleElasticsearchClient::SimpleElasticsearchClient(const std::string& host, int port) 
     : host(host), port(port) {
-    base_url = "http://" + Confparcer::SETTING<std::string>("ELASTIC_HOST","127.0.0.1")+ ":" 
-    + Confparcer::SETTING<std::string>("ELASTIC_PORT","127.0.0.1");
+    base_url = "http://" + host + ":" +std::to_string(port);
     curl_global_init(CURL_GLOBAL_DEFAULT);
 }
 

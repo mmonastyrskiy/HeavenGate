@@ -21,12 +21,12 @@ public:
     };
 
     static ParsedRequest parse(const std::string& uid,const std::string& request_data);
+    static std::string jsonify(const ParsedRequest& req);
 
 private:
     static void parseRequestLine(const std::string& line, ParsedRequest& result);
     static void parseHeader(const std::string& line, ParsedRequest& result);
     static void parseQueryParams(const std::string& query_string, ParsedRequest& result);
-    static std::string jsonify(const ParsedRequest& req);
 };
 
 } // namespace Classifier
