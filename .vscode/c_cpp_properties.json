@@ -4,7 +4,7 @@
             "name": "Win32",
             "includePath": [
                 "${workspaceFolder}/**",
-                "C:/ProgramData/chocolatey/lib/curl/tools/curl-8.17.0_1-win64-mingw/include"
+                "C:\\ProgramData\\chocolatey\\lib\\curl\\tools\\curl-8.17.0_1-win64-mingw\\include"
             ],
             "defines": [
                 "_DEBUG",
@@ -15,10 +15,7 @@
             "compilerPath": "cl.exe",
             "cStandard": "c17",
             "cppStandard": "c++17",
-            "intelliSenseMode": "windows-msvc-x64",
-            "compilerArgs": [
-                "-Wno-c++17-extensions"
-            ]
+            "intelliSenseMode": "windows-msvc-x64"
         }
     ],
     "version": 4

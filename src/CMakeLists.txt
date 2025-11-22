@@ -8,36 +8,49 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 # Исходные файлы
 set(SRC_FILES
-    main.cpp
-    AppManager/AppManager.cpp
-    DataBus/DataBus.cpp
-    LoadBalancer/LoadBalancer.cpp
-    common/Argparcer.cpp
-    common/logger.cpp
-    common/Confparcer.cpp
     API/dashboardAPI.cpp
+    API/SysController.cpp
+    AppManager/AppManager.cpp
+    common/Argparcer.cpp
+    common/Confparcer.cpp
+    common/logger.cpp
+    DataBus/DataBus.cpp
+    DataStorage/geo2ip.cpp
+    DataStorage/PostgressQLManager.cpp
+    DataStorage/ElasticStorage.cpp
+    LoadBalancer/LoadBalancer.cpp
+    main.cpp
+    ReqClassifier/ReqParser.cpp
 )
 
 set(HEADER_FILES
-    AppManager/AppComponent.h
-    AppManager/AppManager.h
-    DataBus/BusEvent.h
-    DataBus/DataBusMetrics.h
-    DataBus/subscriptionID.h
-    LoadBalancer/LoadBalancer.h
     ../include/colorText.h
     ../include/strconv.h
     ../thirdparty/json.hpp
+    API/dashboardAPI.h
+    API/SysController.hpp
+    AppManager/AppComponent.h
+    AppManager/AppManager.h
     common/Argparcer.h
-    common/logger.h
     common/Confparcer.h
     common/generic.h
-    API/dashboardAPI.h
+    common/logger.h
+    common/rand.h
+    DataBus/BusEvent.h
+    DataBus/DataBusMetrics.h
+    DataBus/subscriptionID.h
+    DataStorage/geo2ip.h
+    DataStorage/PostgressQLManager.hpp
+    DataStorage/ElasticStorage.hpp
+    DataStorage/PostgressQL_query.hpp
+    LoadBalancer/LoadBalancer.h
+    ReqClassifier/ReqParser.hpp
+    ReqClassifier/ReqClassifier.hpp
 )
 
 # ==================== GO DASHBOARD ====================
 
-# Проверяем наличие Go
+# Проверяем наличие Go // TODO: MIGRATE ME TO THE SEPARATE FILE 
 find_program(GO_EXECUTABLE go)
 if(GO_EXECUTABLE)
     # Получаем абсолютный путь к директории Go проекта
@@ -130,6 +143,11 @@ endif()
 
 # Поиск CURL
 find_package(CURL QUIET)
+#Поиск постгресс
+find_package(PostgreSQL REQUIRED)
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(LIBPQXX REQUIRED libpqxx)
+
 
 if(NOT CURL_FOUND)
     # Fallback: ручной поиск если find_package не сработал
@@ -159,16 +177,24 @@ if(CURL_FOUND)
         add_library(curl_lib INTERFACE)
         target_include_directories(curl_lib INTERFACE ${CURL_INCLUDE_DIR})
         target_link_libraries(curl_lib INTERFACE ${CURL_LIBRARY})
+
+        target_include_directories(ip_lookup PRIVATE ${MAXMINDDB_INCLUDE_DIR})
+        target_link_libraries(ip_lookup ${MAXMINDDB_LIB})
+
+
         set(CURL_TARGET curl_lib)
     endif()
 else()
     message(WARNING "CURL not found. Some features may be unavailable.")
 endif()
 
+
+
 # Заголовочные файлы
 target_include_directories(heavengate PRIVATE
     ${CMAKE_SOURCE_DIR}/include
     ${CMAKE_SOURCE_DIR}/thirdparty
+    ${LIBPQXX_INCLUDE_DIRS}
     ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
@@ -176,10 +202,17 @@ target_include_directories(heavengate PRIVATE
 target_link_libraries(heavengate PRIVATE
     pthread
     ${CURL_TARGET}
+    ${LIBPQXX_LIBRARIES}
     ${PLATFORM_LIBS}
     json_header_only
     colorText
     asio
+    pqxx
+    pq
+    maxminddb
+    PostgreSQL::PostgreSQL
+
+
 )
 
 # Компиляционные флаги

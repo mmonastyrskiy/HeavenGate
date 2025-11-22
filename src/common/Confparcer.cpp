@@ -10,6 +10,7 @@
 #include "Confparcer.h"
 #include <fstream>
 #include "logger.h"
+#include "generic.h"
 #include <algorithm> // for std::remove
 #include <cctype>    // for std::isspace
 #include <cstdlib>
@@ -17,17 +18,21 @@
 
 Confparcer& Confparcer::the() {
     static Confparcer c;
+    c.parce();
+    //LOG_INFO("Confparcer parce called");
     return c;
 }
 
 int Confparcer::parce() {
     std::string path = getconfig();
+    //LOG_DEBUG("Got config file " + path);
     std::ifstream cfile(path); 
     
     if (!cfile.is_open()) {
         LOG_FATAL("Failed to open config file, please check the path");
         return ErrorCodes::CONFIG_NOT_OPENED;
     }
+    //LOG_DEBUG("Opened config file " + path);
     
     std::string line;
     int line_num = 1;
@@ -72,10 +77,15 @@ int Confparcer::parce() {
 
 std::string Confparcer::get(const std::string& key, int* error_code = nullptr) const {
     // Provide default error code if null pointer is passed
-    int dummy_error;
+    int dummy_error {0};
     int& e = error_code ? *error_code : dummy_error;
-    
+
+    if(config.size() < 1){
+        LOG_WARN("No ARGS Loaded");
+        return "";
+    }
     try {
+        //LOG_DEBUG("Trying to get value from config");
         std::string value = config.at(key);
         e = ErrorCodes::SUCCESS;
         return value;
@@ -87,17 +97,30 @@ std::string Confparcer::get(const std::string& key, int* error_code = nullptr) c
         return "";
     }
 }
-std::string Confparcer::getconfig() const{
-const char* env;
-
-env = std::getenv(HG_ENVKEY);
-if (env == nullptr){
-std::filesystem::path base = "/var/HeavenGate"; //TODO: Has to be created
+std::string Confparcer::getconfig() const {
+    //LOG_DEBUG("LOADING ENV");
+    const char* env = std::getenv(HG_ENVKEY);
+    
+    std::filesystem::path base;
+    
+    if (env == nullptr) {
+        LOG_WARN("Failed to load ENV");
+        // Production path (uncomment for release)
+        // base = "/var/HeavenGate/";
+        
+        // Development path
+        base = "/root/Documents/HeavenGate/";
+        //LOG_DEBUG("LOADING base");
+    } else {
+        //LOG_INFO("USING ENV PATH");
+        base = env;
+    }
+    
+    std::filesystem::path config = base / "config" / "default.ini";
+    //LOG_DEBUG("LOADING path");
+    return config.string();
 }
-std::filesystem::path base = env;
-std::filesystem::path config = base /= "config";
-config += "default.ini";
-return config.string();
-
-
+Confparcer::Confparcer(){
+    parce();
+    //LOG_DEBUG("CONFPARCER PARSE CALLED");
 }

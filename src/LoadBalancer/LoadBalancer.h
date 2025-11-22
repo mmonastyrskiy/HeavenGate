@@ -5,9 +5,8 @@
  * Author: mmonastyrskiy
  */
 
-#ifndef LOADBALANCER_H
-#define LOADBALANCER_H
 
+#pragma once
 #include <string>
 #include <vector>
 #include <memory>
@@ -29,6 +28,8 @@ public:
     std::shared_ptr<asio::ip::tcp::socket> backend_socket;
     std::atomic<bool> is_malicious{false};
     std::atomic<bool> active{true};
+    std::string countryCode;
+
     
     ClientConnection(asio::io_context& io_context, const std::string& ip);
     void start();
@@ -49,7 +50,6 @@ public:
     std::atomic<long> total_requests{0};
     std::chrono::steady_clock::time_point last_request_time;
     std::chrono::steady_clock::time_point last_health_check;
-
     BackendNode(const std::string& id, const std::string& host, int port,
                 bool is_honeypot = false, float weight = 1.0f);
 };
@@ -83,6 +83,8 @@ struct PerformanceMetrics {
 
 class LoadBalancer {
 public:
+    std::string runID;
+
     LoadBalancer(RoutingStrategy strategy = RoutingStrategy::IP_HASH);
     ~LoadBalancer();
 
@@ -96,10 +98,9 @@ public:
     const PerformanceMetrics& get_performance_metrics() const;
     
     static std::string strategy_to_string(RoutingStrategy strategy);
+    std::string get_runID();
 
 private:
-
-
     mutable std::mutex clients_mutex_;
     int legit_clients_count_ = 0;
     int malicious_clients_count_ = 0;
@@ -166,6 +167,16 @@ private:
     void read_from_client(ClientConnection::Ptr client);
     void read_from_backend(ClientConnection::Ptr client);
     void start_stats_updater(std::chrono::seconds timeout);
+
+    // NEW METHODS FOR ALLGOOD MODE
+    void connect_to_backend(ClientConnection::Ptr client, std::shared_ptr<BackendNode> backend);
+    void start_proxying(ClientConnection::Ptr client);
+    void read_from_client_and_forward(ClientConnection::Ptr client);
+    void read_from_backend_and_forward(ClientConnection::Ptr client);
 };
 
-#endif // LOADBALANCER_H
+
+// Режим работы: если определено ALLGOOD, все запросы идут на реальные серверы без классификации
+#define ALLGOOD // TODO: COMMENT ME ON PROD
+
+

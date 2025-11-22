@@ -4,21 +4,32 @@
  * Created Date: Saturday, November 9th 2025
  * Author: mmonastyrskiy
  */
-
-#include "LoadBalancer.h"
-#include "../common/logger.h"
-#include <algorithm>
-#include <iostream>
-#include <random>
-#include <functional>
+#include <memory>
 #include "../API/dashboardAPI.h"
 #include "../common/Confparcer.h"
 #include "../common/generic.h"
+#include "../common/logger.h"
+#include "../common/rand.h"
+#include "../DataStorage/geo2ip.h"
+#include "../DataStorage/PostgressQLManager.hpp"
+#include "../DataStorage/ElasticStorage.hpp"
+#include "../ReqClassifier/ReqClassifier.hpp"
+#include "LoadBalancer.h"
+#include <algorithm>
+#include <functional>
+#include <iostream>
+#include <pqxx/pqxx>
+#include <random>
+#include <vector>
+
+
 
 // ClientConnection implementation
 ClientConnection::ClientConnection(asio::io_context& io_context, const std::string& ip)
     : client_ip(ip), socket(io_context) {
-    client_id = ip + "_" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count());
+        RandomGenerator rg;
+        
+    client_id = rg.generate(16);
 }
 
 void ClientConnection::start() {
@@ -46,6 +57,9 @@ LoadBalancer::LoadBalancer(RoutingStrategy strategy)
     : strategy_(strategy), running_(false), acceptor_(io_context_) {
 
     stats_.start_time = std::chrono::steady_clock::now();
+    RandomGenerator rg;
+    runID = rg.generate(16);
+    
 
     health_check_sub_ = DataBus::instance().subscribe(
         BusEventType::SERVICE_HEALTH_UPDATE,
@@ -71,38 +85,58 @@ LoadBalancer::LoadBalancer(RoutingStrategy strategy)
 
 
 void LoadBalancer::updateClientsStats() {
-    std::lock_guard<std::mutex> lock(clients_mutex_);
-    
-    // Подсчитываем текущее количество клиентов
-    int current_legit = 0;
-    int current_malicious = 0;
-    
+    // Быстрая проверка без блокировки сначала
     {
-        std::lock_guard<std::mutex> mapping_lock(mapping_mutex_);
-        for (const auto& [client_ip, backend] : client_backend_mapping_) {
-            if (backend && backend->is_honeypot) {
-                current_malicious++;
-            } else {
-                current_legit++;
+        std::lock_guard<std::mutex> lock(clients_mutex_);
+        // Если статистика не изменилась, сразу выходим
+        int current_legit = 0;
+        int current_malicious = 0;
+        
+        {
+            std::lock_guard<std::mutex> mapping_lock(mapping_mutex_);
+            for (const auto& [client_ip, backend] : client_backend_mapping_) {
+                if (backend && backend->is_honeypot) {
+                    current_malicious++;
+                } else {
+                    current_legit++;
+                }
             }
         }
-    }
-    
-    // Если статистика изменилась, отправляем обновление
-    if (current_legit != legit_clients_count_ || current_malicious != malicious_clients_count_) {
+        
+        // Быстрый выход если статистика не изменилась
+        if (current_legit == legit_clients_count_ && current_malicious == malicious_clients_count_) {
+            return;
+        }
+        
         legit_clients_count_ = current_legit;
         malicious_clients_count_ = current_malicious;
+    } // отпускаем clients_mutex_ как можно раньше
+    
+    // Защита от слишком частых вызовов API
+    static std::mutex api_mutex;
+    static auto last_api_call = std::chrono::steady_clock::now();
+    
+    {
+        std::lock_guard<std::mutex> api_lock(api_mutex);
+        auto now = std::chrono::steady_clock::now();
         
-        // Вызываем API для обновления на dashboard
-        int err = 0;
-        DashboardAPI::the().callClientChange(legit_clients_count_, malicious_clients_count_, &err);
-        
-        if (err != 0) {
-            LOG_WARN("Failed to update clients stats on dashboard, error: " + std::to_string(err));
-        } else {
-            LOG_DEBUG("Clients stats updated: " + std::to_string(legit_clients_count_) + 
-                     " legit, " + std::to_string(malicious_clients_count_) + " malicious");
+        // Не чаще чем раз в 2 секунды
+        if (now - last_api_call < std::chrono::seconds(2)) {
+            return;
         }
+        
+        last_api_call = now;
+    }
+    
+    // Вызываем API для обновления на dashboard (без блокировки основных мьютексов)
+    int err = 0;
+    DashboardAPI::the().callClientChange(legit_clients_count_, malicious_clients_count_, &err);
+    
+    if (err != 0) {
+        LOG_WARN("Failed to update clients stats on dashboard, error: " + std::to_string(err));
+    } else {
+        LOG_DEBUG("Clients stats updated: " + std::to_string(legit_clients_count_) + 
+                 " legit, " + std::to_string(malicious_clients_count_) + " malicious");
     }
 }
 
@@ -146,7 +180,7 @@ LoadBalancer::~LoadBalancer() {
     }
 }
 
-void LoadBalancer::start(int port) {
+void LoadBalancer::start(int port) { // TODO: MOVE PORT TO CONFIG
     if (running_.exchange(true)) return;
 
     try {
@@ -156,7 +190,11 @@ void LoadBalancer::start(int port) {
         acceptor_.bind(endpoint);
         acceptor_.listen();
 
-        LOG_INFO("LoadBalancer started on port " + std::to_string(port));
+#ifdef ALLGOOD
+        LOG_WARN("LoadBalancer started on port " + std::to_string(port) + "Having RunID: " + runID +" [ALLGOOD MODE - direct routing to real backends]");
+#else
+        LOG_INFO("LoadBalancer started on port " + std::to_string(port) + "Having RunID: " + runID + " [CLASSIFICATION MODE]");
+#endif
 
         server_thread_ = std::thread([this]() {
             start_accept();
@@ -164,7 +202,7 @@ void LoadBalancer::start(int port) {
         });
 
         //start_health_checks(); TODO: UNCOMMENT WHEN BACKENDS WILL BE ONLINE 
-        int timeout = Confparcer::SETTING<int>("DASHBOARD_AUTOUPDATE_PERIOD",30);
+        int timeout = Confparcer::SETTING<int>("DASHBOARD_AUTOUPDATE_PERIOD",10);
         start_stats_updater(std::chrono::seconds(timeout)); // Обновляем статистику каждые 30 секунд
 
     } catch (const std::exception& e) {
@@ -192,6 +230,12 @@ void LoadBalancer::handle_accept(ClientConnection::Ptr client, const asio::error
             client->client_ip = remote_ep.address().to_string();
         }
 
+        geo2ip geo_detector; // FIXME: It is reopened on each user... This is terrible
+        PostgressQLManager pgm;
+        pgm.connect();
+        auto& conn = pgm.get_connection();
+        client->countryCode = geo_detector.getCountryByIP(client->client_ip);
+        
         // Publish new client connection event
         DataBus::instance().publish(
             BusEventType::NEW_CLIENT_CONNECTION,
@@ -199,15 +243,52 @@ void LoadBalancer::handle_accept(ClientConnection::Ptr client, const asio::error
             nlohmann::json{
                 {"client_ip", client->client_ip},
                 {"client_id", client->client_id},
+                {"Ip2GEO", client->countryCode},
                 {"timestamp", std::chrono::duration_cast<std::chrono::milliseconds>(
                     std::chrono::system_clock::now().time_since_epoch()).count()}
             }
         );
 
-        LOG_INFO("New client connected: " + client->client_ip);
 
-        // Start handling client requests
+        LOG_INFO("New client connected: " + client->client_ip + " FROM: " + client->countryCode);
+        std::vector<std::string> vals = {client->client_id,client->client_ip,client->countryCode,std::to_string(
+            std::chrono::duration_cast<std::chrono::milliseconds>(
+                    std::chrono::system_clock::now().time_since_epoch()).count()),"true"};
+        pgm.insert_safely_one(conn, std::string("clinets"),vals);
+
+
+#ifdef ALLGOOD
+        // РЕЖИМ ALLGOOD: сразу маршрутизируем на реальный бэкенд
+        auto backend = select_backend(false, client->client_ip); // false = не malicious
+        
+        if (backend) {
+            LOG_INFO("ALLGOOD MODE: Routing client " + client->client_ip + " to real backend: " + backend->id);
+            assign_backend_to_client(client->client_ip, backend);
+            LOG_DEBUG("Backend assigned");
+            
+            // Устанавливаем соединение с бэкендом
+            connect_to_backend(client, backend);
+        } else {
+            LOG_ERROR("No available real backends for client: " + client->client_ip);
+            client->close();
+            if(!pgm.is_connected()){
+            pgm.connect();
+            }
+        auto& conn = pgm.get_connection();
+        std::vector<std::pair<std::string, std::string>> set_values = {
+    {"is_active", "false"}
+};
+
+std::vector<std::pair<std::string, std::string>> where_conditions = {
+    {"user_id", client->client_id}
+};
+        pgm.safe_update(conn,"clients",set_values,where_conditions);
+
+        }
+#else
+        // ОРИГИНАЛЬНЫЙ РЕЖИМ: отправляем на классификацию
         handle_client_request(client);
+#endif
         
         // Continue accepting new connections
         start_accept();
@@ -219,29 +300,225 @@ void LoadBalancer::handle_accept(ClientConnection::Ptr client, const asio::error
     }
 }
 
+void LoadBalancer::connect_to_backend(ClientConnection::Ptr client, std::shared_ptr<BackendNode> backend) {
+    try {
+        client->backend_socket = std::make_shared<asio::ip::tcp::socket>(io_context_);
+        
+        asio::ip::tcp::endpoint backend_ep(
+            asio::ip::make_address(backend->host), backend->port);
+        
+        LOG_DEBUG("Connecting to backend: " + backend->host + ":" + std::to_string(backend->port));
+        
+        client->backend_socket->async_connect(backend_ep,
+            [this, client, backend](const asio::error_code& error) {
+                if (!error) {
+                    LOG_INFO("Successfully connected to backend: " + backend->id);
+                    LOG_DEBUG("Backend socket is open: " + std::to_string(client->backend_socket->is_open()));
+                    
+                    // Начинаем двустороннее проксирование
+                    start_proxying(client);
+                } else {
+                    LOG_ERROR("Backend connection failed to " + backend->host + ":" + 
+                             std::to_string(backend->port) + " - " + error.message());
+                    LOG_DEBUG("Error code: " + std::to_string(error.value()));
+                    client->close();
+                    release_backend(backend->id);
+                    
+                    // Пытаемся найти другой бэкенд
+                    auto new_backend = select_backend(false, client->client_ip);
+                    if (new_backend && new_backend->id != backend->id) {
+                        LOG_INFO("Retrying with different backend: " + new_backend->id);
+                        connect_to_backend(client, new_backend);
+                    } else {
+                        LOG_ERROR("No alternative backends available for client: " + client->client_ip);
+                    }
+                }
+            });
+    } catch (const std::exception& e) {
+        LOG_ERROR("Connection error: " + std::string(e.what()));
+        client->close();
+        release_backend(backend->id);
+        PostgressQLManager pgm;
+        if(!pgm.is_connected()){
+            pgm.connect();
+            }
+        auto& conn = pgm.get_connection();
+        std::vector<std::pair<std::string, std::string>> set_values = {
+    {"is_active", "false"}
+};
+
+std::vector<std::pair<std::string, std::string>> where_conditions = {
+    {"user_id", client->client_id}
+};
+        pgm.safe_update(conn,"clients",set_values,where_conditions);
+    }
+}
+
+void LoadBalancer::start_proxying(ClientConnection::Ptr client) {
+    LOG_DEBUG("Starting bidirectional proxying for client: " + client->client_ip);
+    
+    // Начинаем читать от клиента и отправлять в бэкенд
+    read_from_client_and_forward(client);
+    
+    // Начинаем читать от бэкенда и отправлять клиенту
+    read_from_backend_and_forward(client);
+}
+
+void LoadBalancer::read_from_client_and_forward(ClientConnection::Ptr client) {
+    auto buffer = std::make_shared<std::vector<char>>(8192);
+    
+    LOG_DEBUG("Waiting for data from client: " + client->client_ip);
+    
+    client->socket.async_read_some(asio::buffer(*buffer),
+        [this, client, buffer](const asio::error_code& error, size_t bytes_read) {
+            if (!error && bytes_read > 0) {
+                std::string request_data(buffer->data(), bytes_read);
+                LOG_DEBUG("Received " + std::to_string(bytes_read) + " bytes from client: " + client->client_ip);
+                Classifier::ProcessReq(client->client_id,buffer->data());
+                LOG_DEBUG("First 100 chars of request: " + std::string(buffer->data(), std::min(bytes_read, size_t(100))));
+                
+                // Отправляем данные в бэкенд
+                if (client->backend_socket && client->backend_socket->is_open()) {
+                    LOG_DEBUG("Backend socket is open, forwarding data to backend");
+                    asio::async_write(*client->backend_socket,
+                        asio::buffer(buffer->data(), bytes_read),
+                        [this, client](const asio::error_code& error, size_t bytes_written) {
+                            if (!error) {
+                                LOG_DEBUG("Successfully forwarded " + std::to_string(bytes_written) + " bytes to backend");
+                                // Продолжаем чтение от клиента
+                                read_from_client_and_forward(client);
+                            } else {
+                                LOG_ERROR("Write to backend failed: " + error.message());
+                                LOG_DEBUG("Error code: " + std::to_string(error.value()));
+                                client->close();
+                            }
+                        });
+                } else {
+                    LOG_WARN("Backend socket not ready or closed, closing client connection");
+                    LOG_DEBUG("Backend socket exists: " + std::to_string(client->backend_socket != nullptr));
+                    if (client->backend_socket) {
+                        LOG_DEBUG("Backend socket is open: " + std::to_string(client->backend_socket->is_open()));
+                    }
+                    client->close();
+                }
+                
+            } else if (error != asio::error::operation_aborted) {
+                if (error) {
+                    LOG_DEBUG("Client read error: " + error.message() + " (code: " + std::to_string(error.value()) + ")");
+                } else {
+                    LOG_DEBUG("Client read: 0 bytes (connection closed?)");
+                }
+                client->close();
+
+                PostgressQLManager pgm;
+            if(!pgm.is_connected()){
+            pgm.connect();
+            }
+        auto& conn = pgm.get_connection();
+        std::vector<std::pair<std::string, std::string>> set_values = {
+    {"is_active", "false"}
+};
+
+std::vector<std::pair<std::string, std::string>> where_conditions = {
+    {"user_id", client->client_id}
+};
+        pgm.safe_update(conn,"clients",set_values,where_conditions);
+            }
+        });
+}
+
+void LoadBalancer::read_from_backend_and_forward(ClientConnection::Ptr client) {
+    auto buffer = std::make_shared<std::vector<char>>(8192);
+    
+    if (client->backend_socket && client->backend_socket->is_open()) {
+        LOG_DEBUG("Waiting for data from backend for client: " + client->client_ip);
+        
+        client->backend_socket->async_read_some(asio::buffer(*buffer),
+            [this, client, buffer](const asio::error_code& error, size_t bytes_read) {
+                if (!error && bytes_read > 0) {
+                    LOG_DEBUG("Received " + std::to_string(bytes_read) + " bytes from backend for client: " + client->client_ip);
+                    LOG_DEBUG("First 100 chars of response: " + std::string(buffer->data(), std::min(bytes_read, size_t(100))));
+                    
+                    // Отправляем данные клиенту
+                    asio::async_write(client->socket,
+                        asio::buffer(buffer->data(), bytes_read),
+                        [this, client](const asio::error_code& error, size_t bytes_written) {
+                            if (!error) {
+                                LOG_DEBUG("Successfully forwarded " + std::to_string(bytes_written) + " bytes to client");
+                                // Продолжаем чтение от бэкенда
+                                read_from_backend_and_forward(client);
+                            } else {
+                                LOG_ERROR("Write to client failed: " + error.message());
+                                LOG_DEBUG("Error code: " + std::to_string(error.value()));
+                                client->close();
+                            }
+                        });
+                } else if (error != asio::error::operation_aborted) {
+                    if (error) {
+                        LOG_DEBUG("Backend read error: " + error.message() + " (code: " + std::to_string(error.value()) + ")");
+                    } else {
+                        LOG_DEBUG("Backend read: 0 bytes (connection closed?)");
+                    }
+                    client->close();
+                    PostgressQLManager pgm;
+            if(!pgm.is_connected()){
+            pgm.connect();
+            }
+        auto& conn = pgm.get_connection();
+        std::vector<std::pair<std::string, std::string>> set_values = {
+    {"is_active", "false"}
+};
+
+std::vector<std::pair<std::string, std::string>> where_conditions = {
+    {"user_id", client->client_id}
+};
+        pgm.safe_update(conn,"clients",set_values,where_conditions);
+                }
+            });
+    } else {
+        LOG_DEBUG("Backend socket not available for reading, client: " + client->client_ip);
+    }
+}
+
 void LoadBalancer::handle_client_request(ClientConnection::Ptr client) {
-    // Check if client already has assigned backend
+#ifdef ALLGOOD
+    // В режиме ALLGOOD эта функция не должна вызываться, но на всякий случай
+    LOG_DEBUG("handle_client_request called in ALLGOOD mode for client: " + client->client_ip);
+    auto backend = select_backend(false, client->client_ip);
+    if (backend) {
+        assign_backend_to_client(client->client_ip, backend);
+        connect_to_backend(client, backend);
+    }
+#else
+    // Оригинальная логика с классификацией
     auto assigned_backend = get_assigned_backend(client->client_ip);
     
     if (!assigned_backend) {
         // For initial request, send to classifier first
-        LOG_INFO("New request from new client");
+        LOG_INFO("New request from new client, sending to classifier");
         read_from_client(client);
     } else {
         // Client already classified, proxy directly to assigned backend
         proxy_to_backend(client, assigned_backend);
         LOG_INFO("New request from assigned client");
     }
+#endif
 }
 
 void LoadBalancer::read_from_client(ClientConnection::Ptr client) {
+#ifdef ALLGOOD
+    // В режиме ALLGOOD используем прямую пересылку
+    LOG_DEBUG("read_from_client in ALLGOOD mode, using direct forwarding");
+    read_from_client_and_forward(client);
+#else
+    // Оригинальная логика с отправкой в классификатор
     auto buffer = std::make_shared<std::vector<char>>(8192);
     
     client->socket.async_read_some(asio::buffer(*buffer),
         [this, client, buffer](const asio::error_code& error, size_t bytes_read) {
             if (!error && bytes_read > 0) {
-                // Publish request to classifier
                 std::string request_data(buffer->data(), bytes_read);
+                Classifier::ProcessReq(client->client_id,buffer->data());
                 
                 DataBus::instance().publish(
                     BusEventType::REQUEST_FOR_CLASSIFICATION,
@@ -263,12 +540,36 @@ void LoadBalancer::read_from_client(ClientConnection::Ptr client) {
                 
                 // Удаляем клиента при отключении
                 remove_client(client->client_ip);
+                PostgressQLManager pgm;
+                if(!pgm.is_connected()){
+            pgm.connect();
+            }
+        auto& conn = pgm.get_connection();
+        std::vector<std::pair<std::string, std::string>> set_values = {
+    {"is_active", "false"}
+};
+
+std::vector<std::pair<std::string, std::string>> where_conditions = {
+    {"user_id", client->client_id}
+};
+        pgm.safe_update(conn,"clients",set_values,where_conditions);
                 client->close();
             }
         });
+#endif
 }
 
 void LoadBalancer::proxy_to_backend(ClientConnection::Ptr client, std::shared_ptr<BackendNode> backend) {
+#ifdef ALLGOOD
+    // В режиме ALLGOOD используем прямое соединение
+    LOG_DEBUG("proxy_to_backend in ALLGOOD mode for client: " + client->client_ip);
+    if (!client->backend_socket || !client->backend_socket->is_open()) {
+        connect_to_backend(client, backend);
+    } else {
+        start_proxying(client);
+    }
+#else
+    // Оригинальная логика
     try {
         if (!client->backend_socket) {
             client->backend_socket = std::make_shared<asio::ip::tcp::socket>(io_context_);
@@ -298,9 +599,16 @@ void LoadBalancer::proxy_to_backend(ClientConnection::Ptr client, std::shared_pt
         client->close();
         release_backend(backend->id);
     }
+#endif
 }
 
 void LoadBalancer::read_from_backend(ClientConnection::Ptr client) {
+#ifdef ALLGOOD
+    // В режиме ALLGOOD используем прямую пересылку
+    LOG_DEBUG("read_from_backend in ALLGOOD mode, using direct forwarding");
+    read_from_backend_and_forward(client);
+#else
+    // Оригинальная логика
     auto buffer = std::make_shared<std::vector<char>>(8192);
     
     if (client->backend_socket && client->backend_socket->is_open()) {
@@ -317,6 +625,17 @@ void LoadBalancer::read_from_backend(ClientConnection::Ptr client) {
                                 
                                 // Удаляем клиента при ошибке записи
                                 remove_client(client->client_ip);
+                                PostgressQLManager pgm;
+                                            if(!pgm.is_connected()){
+                                                 pgm.connect();
+                                                 auto& conn = pgm.get_connection();
+                                                 std::vector<std::pair<std::string, std::string>> set_values = {
+                                                    {"is_active", "false"}};
+                                                std::vector<std::pair<std::string, std::string> where_conditions = {
+
+                                                    {"user_id", client->client_id}
+                                                };
+                                                pgm.safe_update(conn,"clients",set_values,where_conditions);
                                 client->close();
                             }
                         });
@@ -325,10 +644,23 @@ void LoadBalancer::read_from_backend(ClientConnection::Ptr client) {
                     
                     // Удаляем клиента при отключении бэкенда
                     remove_client(client->client_ip);
+                                if(!pgm.is_connected()){
+            pgm.connect();
+            }
+        auto& conn = pgm.get_connection();
+        std::vector<std::pair<std::string, std::string>> set_values = {
+    {"is_active", "false"}
+};
+
+std::vector<std::pair<std::string, std::string>> where_conditions = {
+    {"user_id", client->client_id}
+};
+        pgm.safe_update(conn,"clients",set_values,where_conditions);
                     client->close();
                 }
             });
     }
+#endif
 }
 
 void LoadBalancer::add_backend(std::shared_ptr<BackendNode> server_ptr) {
@@ -362,11 +694,18 @@ void LoadBalancer::add_backend(std::shared_ptr<BackendNode> server_ptr) {
 std::shared_ptr<BackendNode> LoadBalancer::select_backend(bool is_malicious, const std::string& client_ip) {
     auto start_time = std::chrono::steady_clock::now();
 
+#ifdef ALLGOOD
+    // В режиме ALLGOOD всегда используем реальные бэкенды
+    is_malicious = false;
+    LOG_DEBUG("ALLGOOD mode: forcing real backend selection for client: " + client_ip);
+#endif
+
     auto& backends = is_malicious ? honeypot_backends_ : real_backends_;
 
     if (backends.empty()) {
         stats_.routing_errors++;
         performance_.backend_selection_failures++;
+        LOG_DEBUG("No backends available for selection, is_malicious: " + std::to_string(is_malicious));
         return nullptr;
     }
 
@@ -382,6 +721,7 @@ std::shared_ptr<BackendNode> LoadBalancer::select_backend(bool is_malicious, con
     if (healthy_backends.empty()) {
         stats_.routing_errors++;
         performance_.backend_selection_failures++;
+        LOG_DEBUG("No healthy backends available for selection");
         return nullptr;
     }
 
@@ -441,8 +781,11 @@ std::shared_ptr<BackendNode> LoadBalancer::select_backend(bool is_malicious, con
         int err = 0;
         DashboardAPI::the().callRequestRegistered(client_ip, selected->id, is_malicious, &err);
 
+        LOG_DEBUG("Selected backend: " + selected->id + " for client: " + client_ip);
+
     } else {
         stats_.routing_errors++;
+        LOG_DEBUG("Backend selection failed for client: " + client_ip);
     }
 
     return selected;
@@ -457,7 +800,8 @@ std::shared_ptr<BackendNode> LoadBalancer::get_assigned_backend(const std::strin
 void LoadBalancer::assign_backend_to_client(const std::string& client_ip, std::shared_ptr<BackendNode> backend) {
     std::lock_guard<std::mutex> lock(mapping_mutex_);
     client_backend_mapping_[client_ip] = backend;
-    updateClientsStats();
+    
+    //updateClientsStats(); // FIXME Crahed here
 }
 
 void LoadBalancer::release_backend(const std::string& server_id) {
@@ -479,6 +823,11 @@ void LoadBalancer::release_backend(const std::string& server_id) {
 }
 
 void LoadBalancer::handle_classification(const Event& event) {
+#ifdef ALLGOOD
+    // В режиме ALLGOOD игнорируем классификацию
+    LOG_DEBUG("ALLGOOD MODE: Ignoring classification event");
+    return;
+#else
     if (event.data.contains("client_ip") && event.data.contains("classification")) {
         std::string client_ip = event.data["client_ip"];
         bool is_malicious = event.data["classification"] == "malicious";
@@ -496,7 +845,7 @@ void LoadBalancer::handle_classification(const Event& event) {
         auto backend = select_backend(is_malicious, client_ip);
         if (backend) {
             assign_backend_to_client(client_ip, backend);
-            updateClientsStats();
+            //updateClientsStats();
             
             // If we have client pointer, we can resume request processing
             if (client_ptr_val != 0) {
@@ -508,6 +857,7 @@ void LoadBalancer::handle_classification(const Event& event) {
             LOG_ERROR("No available backend for client: " + client_ip);
         }
     }
+#endif
 }
 
 // Selection strategy implementations
@@ -775,6 +1125,7 @@ std::string LoadBalancer::strategy_to_string(RoutingStrategy strategy) {
 }
 
 void LoadBalancer::remove_client(const std::string& client_ip) {
+    bool was_removed = false;
     {
         std::lock_guard<std::mutex> lock(mapping_mutex_);
         auto it = client_backend_mapping_.find(client_ip);
@@ -784,24 +1135,23 @@ void LoadBalancer::remove_client(const std::string& client_ip) {
                 release_backend(it->second->id);
             }
             client_backend_mapping_.erase(it);
+            was_removed = true;
         }
     }
     
     // Обновляем статистику после удаления клиента
-    updateClientsStats();
+    //updateClientsStats(); //FIXME: This function hangs for some reason
     
     LOG_DEBUG("Client removed: " + client_ip);
 }
-
 
 void LoadBalancer::start_stats_updater(std::chrono::seconds interval) {
     if (stats_updater_running_.exchange(true)) return;
 
     stats_updater_thread_ = std::thread([this, interval]() {
         while (stats_updater_running_.load()) {
-            // Периодически обновляем статистику
+            // Обновляем статистику только периодически, а не постоянно
             updateClientsStats();
-            DashboardAPI::the().callAgentChange(real_backends_.size(), honeypot_backends_.size());
             
             // Используем таймаут с проверкой флага
             for (int i = 0; i < interval.count() && stats_updater_running_.load(); ++i) {
@@ -810,3 +1160,4 @@ void LoadBalancer::start_stats_updater(std::chrono::seconds interval) {
         }
     });
 }
+std::string LoadBalancer::get_runID(){return runID;}

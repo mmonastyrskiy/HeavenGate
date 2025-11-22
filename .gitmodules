@@ -1,3 +1,9 @@
 [submodule "thirdparty/asio"]
 	path = thirdparty/asio
 	url = https://github.com/chriskohlhoff/asio.git
+[submodule "thirdparty/libmaxminddb"]
+	path = thirdparty/libmaxminddb
+	url = https://github.com/maxmind/libmaxminddb.git
+[submodule "thirdparty/libpqxx"]
+	path = thirdparty/libpqxx
+	url = https://github.com/jtv/libpqxx

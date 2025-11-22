@@ -41,6 +41,7 @@ namespace Argparcer {
 
     private:
         std::string isvalid(std::string s);
+        Argparcer();
     };
 
 } // namespace Argparcer

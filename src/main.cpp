@@ -15,9 +15,39 @@
 #include "DataBus/DataBus.h"
 #include "AppManager/AppManager.h"
 #include "common/logger.h"
+#include "common/Confparcer.h"
+#include "DataStorage/PostgressQLManager.hpp"
+#include "DataStorage/ElasticStorage.hpp"
+#include <pqxx/pqxx>
 
 std::atomic<bool> running{true};
 
+void init(){
+    LOG_INFO("Setting up Databases");
+    PostgressQLManager pgm;
+    auto ehost = Confparcer::SETTING<std::string>("ELASTIC_HOST","127.0.0.1");
+    auto eport = Confparcer::SETTING<size_t>("ELASTIC_HOST",9200);
+    SimpleElasticsearchClient elastic(ehost,static_cast<int> (eport)); // FIXME: MAY CAUSE PROBLEMS DUE TO INT LIMITS EXCEEDED
+
+    if(!elastic.testConnection()){
+        LOG_FATAL("The app cannot run without Elastic Database");
+    }
+    if(!elastic.indexExists(REQ_INDEX)){
+        LOG_INFO("Index does not exist, Creating");
+        if(!elastic.createIndex(REQ_INDEX)){
+            LOG_FATAL("Failed to create index " + std::string(REQ_INDEX));
+        }
+    }
+    pgm.connect();
+    if(!pgm.is_connected()){
+        LOG_FATAL("The app cannot run without PostgressQL Database");
+    }
+    auto& conn = pgm.get_connection();
+    pgm.create_table_safely(conn,"clients");
+
+
+
+}
 void signalHandler(int sig) {
     if (sig == SIGINT) {
         running = false;
@@ -51,6 +81,7 @@ void printStats(const LoadBalancer& balancer) {
 }
 
 int main() {
+    init();
     AppManager manager;
     manager.start_all();
 
@@ -65,8 +96,8 @@ int main() {
 
         // Добавляем реальные бэкенды
         balancer.add_backend(std::make_shared<BackendNode>(
-            "real-server-1", "127.0.0.1", 8180, false, 1.0f));
-        balancer.add_backend(std::make_shared<BackendNode>(
+            "real-server-1", "192.168.235.148", 80, false, 1.0f));
+        /*balancer.add_backend(std::make_shared<BackendNode>(
             "real-server-2", "127.0.0.1", 8181, false, 1.0f));
         balancer.add_backend(std::make_shared<BackendNode>(
             "real-server-3", "127.0.0.1", 8182, false, 1.5f)); // Более мощный сервер
@@ -76,6 +107,7 @@ int main() {
             "honeypot-1", "127.0.0.1", 9190, true, 1.0f));
         balancer.add_backend(std::make_shared<BackendNode>(
             "honeypot-2", "127.0.0.1", 9191, true, 1.0f));
+            */
 
         std::cout << "✅ Backends registered:" << std::endl;
         std::cout << "   - 3 real servers (8180, 8181, 8182)" << std::endl;
@@ -98,7 +130,7 @@ int main() {
             // Периодический вывод статистики
             auto now = std::chrono::steady_clock::now();
             if (now - last_stats_time >= stats_interval) {
-                printStats(balancer);
+                //printStats(balancer);
                 last_stats_time = now;
             }
         }
