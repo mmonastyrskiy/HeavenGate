@@ -4,6 +4,7 @@
 #include "../common/generic.h"
 
 enum class PSQLTables {
+    INVALID,
     VISITORS_TABLE
 };
 
@@ -35,6 +36,7 @@ PSQLTables lookup_table(const std::string& tablename){
     }
     else{
     LOG_FATAL("Uknown table" + tablename +" lookup");
+    return PSQLTables::INVALID;
     }
 }
 std::string get_create_statement(PSQLTables tablename)  {
@@ -45,6 +47,7 @@ std::string get_create_statement(PSQLTables tablename)  {
     
     default:
         VERIFY_NOT_REACHED();
+        return {};
     }
 }
 
@@ -56,5 +59,6 @@ std::vector<std::string> get_cols(PSQLTables tablename)  {
     
     default:
         VERIFY_NOT_REACHED();
+        return {};
     }
 } 

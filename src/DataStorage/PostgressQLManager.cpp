@@ -78,9 +78,8 @@ bool PostgressQLManager::create_table_safely(pqxx::connection &conn, const std::
     try {
         pqxx::work txn(conn);
 
-        pqxx::result res = txn.exec_params("SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = $1)",
-        table_name
-    );
+pqxx::result res = txn.exec("SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = $1)", pqxx::zview{table_name});
+
     if(res[0][0].as<bool>()){
         LOG_INFO("Table " + table_name + " already exists");
         txn.commit();
@@ -97,6 +96,7 @@ bool PostgressQLManager::create_table_safely(pqxx::connection &conn, const std::
     catch(const std::exception& e){
         LOG_ERROR("PSQL Error: " + std::string(e.what()));
     }
+    return false;
 }
 bool PostgressQLManager::insert_safely_one(pqxx::connection& conn, 
                                      const std::string& table_name,
@@ -137,8 +137,7 @@ bool PostgressQLManager::insert_safely_one(pqxx::connection& conn,
         // Convert vector to parameter list
         std::vector<std::string_view> params(values.begin(), values.end());
         
-        pqxx::result res = txn.exec_params(query, 
-                                          pqxx::prepare::make_dynamic_params(params));
+pqxx::result res = txn.exec(query, pqxx::params{params});
         txn.commit();
         return true;
     }
@@ -203,7 +202,7 @@ bool PostgressQLManager::insert_safely_in_transaction(pqxx::work& txn,
                            columns + ") VALUES (" + placeholders + ")";
         
         std::vector<std::string_view> params(values.begin(), values.end());
-        txn.exec_params(query, pqxx::prepare::make_dynamic_params(params));
+        txn.exec(query, pqxx::params{params});
         return true;
     }
     catch (const std::exception& e) {
@@ -298,7 +297,7 @@ bool PostgressQLManager::safe_update(pqxx::connection& conn,
             query += " WHERE " + where_clause;
         }
         
-        txn.exec_params(query, pqxx::prepare::make_dynamic_params(all_params));
+        txn.exec(query, pqxx::params{all_params});
         txn.commit();
         return true;
     }
@@ -372,7 +371,7 @@ bool PostgressQLManager::update_single(pqxx::work& txn,
         query += " WHERE " + where_clause;
     }
     
-    txn.exec_params(query, pqxx::prepare::make_dynamic_params(all_params));
+    txn.exec(query, pqxx::params{all_params});
     return true;
 }
 
@@ -443,7 +442,7 @@ bool PostgressQLManager::safe_delete(pqxx::connection& conn,
         
         std::string query = "DELETE FROM \"" + table_name + "\" WHERE " + where_clause;
         
-        txn.exec_params(query, pqxx::prepare::make_dynamic_params(params));
+        txn.exec(query, pqxx::params{params});
         txn.commit();
         return true;
     }
@@ -504,6 +503,6 @@ bool PostgressQLManager::delete_single(pqxx::work& txn,
     
     std::string query = "DELETE FROM \"" + table_name + "\" WHERE " + where_clause;
     
-    txn.exec_params(query, pqxx::prepare::make_dynamic_params(params));
+    txn.exec(query, pqxx::params{params});
     return true;
 }
