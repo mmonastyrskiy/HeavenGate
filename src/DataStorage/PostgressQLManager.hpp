@@ -25,43 +25,43 @@ public:
     PostgressQLManager& operator=(PostgressQLManager&&) = default;
 
     // Public methods
-    void PostgressQLManager::connect();
-    bool PostgressQLManager::is_connected() const;
+    void connect();
+    bool is_connected() const;
     pqxx::connection& get_connection();
-    bool PostgressQLManager::create_table_safely(pqxx::connection &conn, const std::string &table_name);
-    bool PostgressQLManager::insert_safely(pqxx::connection& conn, const std::string &table_name,std::vector<std::string>& values);
-    bool PostgressQLManager::insert_safely(pqxx::connection& conn, const std::string &table_name,std::vector<std::vector<std::string>>& values);
-    bool PostgressQLManager::insert_safely_in_transaction(pqxx::work& txn,
+    bool create_table_safely(pqxx::connection &conn, const std::string &table_name);
+    bool insert_safely(pqxx::connection& conn, const std::string &table_name,std::vector<std::string>& values);
+    bool insert_safely(pqxx::connection& conn, const std::string &table_name,std::vector<std::vector<std::string>>& values);
+    bool insert_safely_in_transaction(pqxx::work& txn,
                                                     const std::string& table_name,
                                                     std::vector<std::string>& values);
 
-    bool PostgressQLManager::bulk_insert_copy(pqxx::connection& conn, 
+    bool bulk_insert_copy(pqxx::connection& conn, 
                                         const std::string& table_name,
                                         std::vector<std::vector<std::string>>& values);
-     bool PostgressQLManager::insert_safely(pqxx::connection& conn, 
+     bool insert_safely(pqxx::connection& conn, 
                       const std::string& table_name,
                       std::vector<std::string>& values);
     
-    bool PostgressQLManager::insert_safely(pqxx::connection& conn, 
+    bool insert_safely(pqxx::connection& conn, 
                       const std::string& table_name,
                       std::vector<std::vector<std::string>>& values);
     
     // Обновление
-    bool PostgressQLManager::safe_update(pqxx::connection& conn,
+    bool safe_update(pqxx::connection& conn,
                     const std::string& table_name,
                     const std::vector<std::pair<std::string, std::string>>& set_values,
                     const std::vector<std::pair<std::string, std::string>>& where_conditions);
     
-    bool PostgressQLManager::safe_update(pqxx::connection& conn,
+    bool safe_update(pqxx::connection& conn,
                     const std::string& table_name,
                     const std::vector<std::pair<std::pair<std::string, std::string>, 
                     std::vector<std::pair<std::string, std::string>>>>& updates);
 
 
-bool PostgressQLManager::safe_delete(pqxx::connection& conn,
+bool safe_delete(pqxx::connection& conn,
                                   const std::string& table_name,
                                   const std::vector<std::pair<std::string, std::string>>& where_conditions);
-bool PostgressQLManager::safe_delete(pqxx::connection& conn,
+bool safe_delete(pqxx::connection& conn,
                                   const std::string& table_name,
                                   const std::vector<std::vector<std::pair<std::string, std::string>>>& batch_conditions);
 
@@ -70,7 +70,7 @@ bool PostgressQLManager::safe_delete(pqxx::connection& conn,
 private:
 
     std::string build_connection_string();
-    bool PostgressQLManager::is_valid_table_name(const std::string& table_name);
+    bool is_valid_table_name(const std::string& table_name);
      // Вспомогательные функции
     bool insert_single(pqxx::work& txn, const std::string& table_name, 
                       std::vector<std::string>& values);
@@ -85,7 +85,7 @@ private:
                                   size_t start_param_index = 1);
 
 
-    bool PostgressQLManager::delete_single(pqxx::work& txn,
+    bool delete_single(pqxx::work& txn,
                                     const std::string& table_name,
                                     const std::vector<std::pair<std::string, std::string>>& where_conditions);
 };
