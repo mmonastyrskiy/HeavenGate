@@ -28,7 +28,7 @@ table_description visitors = {{"emp_id","first_name","last_name","department","s
 
 
 
-PSQLTables string2table(const std::string& tablename){
+PSQLTables lookup_table(const std::string& tablename){
     if(tablename == "visitors"){
         return PSQLTables::VISITORS_TABLE;
     }

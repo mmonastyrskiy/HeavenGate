@@ -1056,3 +1056,4 @@ void LoadBalancer::start_stats_updater(std::chrono::seconds interval) {
         }
     });
 }
+std::string LoadBalancer::get_runID(){return runID;}

@@ -98,6 +98,7 @@ public:
     const PerformanceMetrics& get_performance_metrics() const;
     
     static std::string strategy_to_string(RoutingStrategy strategy);
+    std::string get_runID();
 
 private:
     mutable std::mutex clients_mutex_;
