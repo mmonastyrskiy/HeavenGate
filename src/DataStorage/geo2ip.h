@@ -1,6 +1,6 @@
 #ifndef GEO2IP_H
 #define GEO2IP_H
-
+#pragma once
 #include "../common/generic.h"
 #include "../../thirdparty/libmaxminddb/include/maxminddb.h"
 #include <string>

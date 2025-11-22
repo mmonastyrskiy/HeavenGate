@@ -1,6 +1,6 @@
 #ifndef SIMPLE_ELASTICSEARCH_CLIENT_HPP
 #define SIMPLE_ELASTICSEARCH_CLIENT_HPP
-
+#pragma once
 #include <string>
 #include <map>
 #include <memory>
