@@ -19,9 +19,10 @@ table_description clients = {{"user_id","user_ip","user_geo","unix_timestamp"},
                 user_id VARCHAR(16) PRIMARY KEY,
                 user_ip VARCHAR(20) NOT NULL,
                 user_geo VARCHAR(10) NOT NULL,
-                unix_timestamp bigint NOT_NULL DEFAULT extract(epoch from now())
+                unix_timestamp bigint NOT_NULL DEFAULT extract(epoch from now()),
+                is_active BOOLEAN DEFAULT TRUE
 
-                )
+                );
             )"
 };
 

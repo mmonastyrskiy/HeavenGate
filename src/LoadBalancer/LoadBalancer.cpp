@@ -251,7 +251,7 @@ void LoadBalancer::handle_accept(ClientConnection::Ptr client, const asio::error
         LOG_INFO("New client connected: " + client->client_ip + " FROM: " + client->countryCode);
         std::vector<std::string> vals = {client->client_id,client->client_ip,client->countryCode,std::to_string(
             std::chrono::duration_cast<std::chrono::milliseconds>(
-                    std::chrono::system_clock::now().time_since_epoch()).count())};
+                    std::chrono::system_clock::now().time_since_epoch()).count()),"true"};
         pgm.insert_safely(conn,"clinets",vals);
 
 
@@ -269,6 +269,19 @@ void LoadBalancer::handle_accept(ClientConnection::Ptr client, const asio::error
         } else {
             LOG_ERROR("No available real backends for client: " + client->client_ip);
             client->close();
+            if(!pgm.is_connected()){
+            pgm.connect();
+            }
+        auto& conn = pgm.get_connection();
+        std::vector<std::pair<std::string, std::string>> set_values = {
+    {"is_active", "false"}
+};
+
+std::vector<std::pair<std::string, std::string>> where_conditions = {
+    {"user_id", client->client_id}
+};
+        pgm.safe_update(conn,"clients",set_values,where_conditions);
+
         }
 #else
         // ОРИГИНАЛЬНЫЙ РЕЖИМ: отправляем на классификацию
@@ -323,6 +336,19 @@ void LoadBalancer::connect_to_backend(ClientConnection::Ptr client, std::shared_
         LOG_ERROR("Connection error: " + std::string(e.what()));
         client->close();
         release_backend(backend->id);
+        PostgressQLManager pgm;
+        if(!pgm.is_connected()){
+            pgm.connect();
+            }
+        auto& conn = pgm.get_connection();
+        std::vector<std::pair<std::string, std::string>> set_values = {
+    {"is_active", "false"}
+};
+
+std::vector<std::pair<std::string, std::string>> where_conditions = {
+    {"user_id", client->client_id}
+};
+        pgm.safe_update(conn,"clients",set_values,where_conditions);
     }
 }
 
@@ -380,6 +406,20 @@ void LoadBalancer::read_from_client_and_forward(ClientConnection::Ptr client) {
                     LOG_DEBUG("Client read: 0 bytes (connection closed?)");
                 }
                 client->close();
+
+                PostgressQLManager pgm;
+            if(!pgm.is_connected()){
+            pgm.connect();
+            }
+        auto& conn = pgm.get_connection();
+        std::vector<std::pair<std::string, std::string>> set_values = {
+    {"is_active", "false"}
+};
+
+std::vector<std::pair<std::string, std::string>> where_conditions = {
+    {"user_id", client->client_id}
+};
+        pgm.safe_update(conn,"clients",set_values,where_conditions);
             }
         });
 }
@@ -417,6 +457,19 @@ void LoadBalancer::read_from_backend_and_forward(ClientConnection::Ptr client) {
                         LOG_DEBUG("Backend read: 0 bytes (connection closed?)");
                     }
                     client->close();
+                    PostgressQLManager pgm;
+            if(!pgm.is_connected()){
+            pgm.connect();
+            }
+        auto& conn = pgm.get_connection();
+        std::vector<std::pair<std::string, std::string>> set_values = {
+    {"is_active", "false"}
+};
+
+std::vector<std::pair<std::string, std::string>> where_conditions = {
+    {"user_id", client->client_id}
+};
+        pgm.safe_update(conn,"clients",set_values,where_conditions);
                 }
             });
     } else {
@@ -483,6 +536,19 @@ void LoadBalancer::read_from_client(ClientConnection::Ptr client) {
                 
                 // Удаляем клиента при отключении
                 remove_client(client->client_ip);
+                PostgressQLManager pgm;
+                if(!pgm.is_connected()){
+            pgm.connect();
+            }
+        auto& conn = pgm.get_connection();
+        std::vector<std::pair<std::string, std::string>> set_values = {
+    {"is_active", "false"}
+};
+
+std::vector<std::pair<std::string, std::string>> where_conditions = {
+    {"user_id", client->client_id}
+};
+        pgm.safe_update(conn,"clients",set_values,where_conditions);
                 client->close();
             }
         });
@@ -555,6 +621,18 @@ void LoadBalancer::read_from_backend(ClientConnection::Ptr client) {
                                 
                                 // Удаляем клиента при ошибке записи
                                 remove_client(client->client_ip);
+                                PostgressQLManager pgm;
+                                            if(!pgm.is_connected()){
+                                                 pgm.connect();
+                                                 auto& conn = pgm.get_connection();
+                                                 std::vector<std::pair<std::string, std::string>> set_values = {
+                                                    {"is_active", "false"}
+                                                };
+                                                std::vector<std::pair<std::string, std::string> where_conditions = {
+
+                                                    {"user_id", client->client_id}
+                                                };
+                                                pgm.safe_update(conn,"clients",set_values,where_conditions);
                                 client->close();
                             }
                         });
@@ -563,6 +641,18 @@ void LoadBalancer::read_from_backend(ClientConnection::Ptr client) {
                     
                     // Удаляем клиента при отключении бэкенда
                     remove_client(client->client_ip);
+                                if(!pgm.is_connected()){
+            pgm.connect();
+            }
+        auto& conn = pgm.get_connection();
+        std::vector<std::pair<std::string, std::string>> set_values = {
+    {"is_active", "false"}
+};
+
+std::vector<std::pair<std::string, std::string>> where_conditions = {
+    {"user_id", client->client_id}
+};
+        pgm.safe_update(conn,"clients",set_values,where_conditions);
                     client->close();
                 }
             });
