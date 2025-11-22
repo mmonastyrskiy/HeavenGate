@@ -254,7 +254,7 @@ void LoadBalancer::handle_accept(ClientConnection::Ptr client, const asio::error
         std::vector<std::string> vals = {client->client_id,client->client_ip,client->countryCode,std::to_string(
             std::chrono::duration_cast<std::chrono::milliseconds>(
                     std::chrono::system_clock::now().time_since_epoch()).count()),"true"};
-        pgm.insert_safely(conn,"clinets",vals);
+        pgm.insert_safely(conn,const std::string("clinets"),vals);
 
 
 #ifdef ALLGOOD
