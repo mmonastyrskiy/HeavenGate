@@ -98,7 +98,7 @@ bool PostgressQLManager::create_table_safely(pqxx::connection &conn, const std::
         LOG_ERROR("PSQL Error: " + std::string(e.what()));
     }
 }
-bool PostgressQLManager::insert_safely(pqxx::connection& conn, 
+bool PostgressQLManager::insert_safely_one(pqxx::connection& conn, 
                                      const std::string& table_name,
                                      std::vector<std::string>& values) {
     auto cols = get_cols(lookup_table(table_name));
@@ -148,7 +148,7 @@ bool PostgressQLManager::insert_safely(pqxx::connection& conn,
     }
 }
 
-bool PostgressQLManager::insert_safely(pqxx::connection& conn, 
+bool PostgressQLManager::insert_safely_many(pqxx::connection& conn, 
                                      const std::string& table_name,
                                      std::vector<std::vector<std::string>>& values) {
     try {

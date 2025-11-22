@@ -29,8 +29,8 @@ public:
     bool is_connected() const;
     pqxx::connection& get_connection();
     bool create_table_safely(pqxx::connection &conn, const std::string &table_name);
-    bool insert_safely(pqxx::connection& conn, const std::string &table_name,std::vector<std::string>& values);
-    bool insert_safely(pqxx::connection& conn, const std::string &table_name,std::vector<std::vector<std::string>>& values);
+    bool insert_safely_one(pqxx::connection& conn, const std::string &table_name,std::vector<std::string>& values);
+    bool insert_safely_many(pqxx::connection& conn, const std::string &table_name,std::vector<std::vector<std::string>>& values);
     bool insert_safely_in_transaction(pqxx::work& txn,
                                                     const std::string& table_name,
                                                     std::vector<std::string>& values);
@@ -70,7 +70,6 @@ bool safe_delete(pqxx::connection& conn,
 private:
 
     std::string build_connection_string();
-    bool is_valid_table_name(const std::string& table_name);
      // Вспомогательные функции
     bool insert_single(pqxx::work& txn, const std::string& table_name, 
                       std::vector<std::string>& values);
