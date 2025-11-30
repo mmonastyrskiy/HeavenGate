@@ -51,8 +51,21 @@
               "icon": "lucide-git-fork",
               "title": "Граф"
             }
+          },
+          {
+            "id": "f55bcdce524206b0",
+            "type": "leaf",
+            "state": {
+              "type": "release-notes",
+              "state": {
+                "currentVersion": "1.10.6"
+              },
+              "icon": "lucide-book-up",
+              "title": "примечания к выпуску 1.10.6"
+            }
           }
-        ]
+        ],
+        "currentTab": 1
       }
     ],
     "direction": "vertical"
@@ -200,7 +213,7 @@
       "bases:Создать новую базу": false
     }
   },
-  "active": "d1c40fdbd312be38",
+  "active": "f55bcdce524206b0",
   "lastOpenFiles": [
     "разработка/Задачи.md",
     "разработка/баги.md",

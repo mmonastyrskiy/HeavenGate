@@ -45,7 +45,7 @@ var (
 	sseMutex   sync.Mutex
 	
 	// Настройки логирования
-	loggingEnabled = true // Переключите на false чтобы отключить логирование
+	loggingEnabled = false // Переключите на false чтобы отключить логирование
 	logFile        *os.File
 	logger         *log.Logger
 )
