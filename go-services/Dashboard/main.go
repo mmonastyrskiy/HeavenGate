@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"sync"
 	"time"
 )
@@ -42,13 +43,69 @@ var (
 	mu         sync.Mutex
 	sseClients = make(map[*SSEClient]bool)
 	sseMutex   sync.Mutex
+	
+	// Настройки логирования
+	loggingEnabled = true // Переключите на false чтобы отключить логирование
+	logFile        *os.File
+	logger         *log.Logger
 )
 
+// Инициализация логирования
+func initLogging() error {
+	if !loggingEnabled {
+		return nil
+	}
+	
+	var err error
+	logFile, err = os.OpenFile("heavengate_dashboard.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	if err != nil {
+		return fmt.Errorf("failed to open log file: %v", err)
+	}
+	
+	logger = log.New(logFile, "", log.LstdFlags)
+	logger.Println("=== HeavenGate Dashboard Log Started ===")
+	return nil
+}
+
+// Функция логирования
+func logMessage(level, message string) {
+	if !loggingEnabled || logger == nil {
+		return
+	}
+	
+	timestamp := time.Now().Format("2006-01-02 15:04:05.000")
+	logger.Printf("[%s] %s: %s\n", timestamp, level, message)
+}
+
+// Логирование с форматированием
+func logf(level, format string, args ...interface{}) {
+	if !loggingEnabled || logger == nil {
+		return
+	}
+	
+	message := fmt.Sprintf(format, args...)
+	logMessage(level, message)
+}
+
 func main() {
+	// Инициализация логирования
+	if err := initLogging(); err != nil {
+		log.Printf("Warning: Logging initialization failed: %v", err)
+	} else if loggingEnabled {
+		defer logFile.Close()
+	}
+
 	fmt.Println("🚀 HeavenGate Dashboard started!")
 	fmt.Println("📡 Listening for balancer requests on :8081")
 	fmt.Println("🌐 Open http://localhost:8081 to view balancer requests")
+	if loggingEnabled {
+		fmt.Println("📝 Logging enabled: logs are being written to heavengate_dashboard.log")
+	} else {
+		fmt.Println("📝 Logging disabled")
+	}
 	fmt.Println("--------------------------------------------------------")
+
+	logf("INFO", "HeavenGate Dashboard server starting on port 8081")
 
 	// Обслуживание статических файлов
 	http.Handle("/", http.FileServer(http.Dir("../../static")))
@@ -66,18 +123,21 @@ func main() {
 	http.HandleFunc("/api/agents", handleAgentsUpdate)
 
 	// Запуск сервера
+	logf("INFO", "Starting HTTP server on :8081")
 	log.Fatal(http.ListenAndServe(":8081", nil))
 }
 
 func handleBalancerRequest(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		logf("WARNING", "Invalid method %s for /api/req_registered from %s", r.Method, r.RemoteAddr)
 		return
 	}
 
 	var balancerReq BalancerRequest
 	if err := json.NewDecoder(r.Body).Decode(&balancerReq); err != nil {
 		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		logf("ERROR", "Failed to decode JSON from %s: %v", r.RemoteAddr, err)
 		return
 	}
 
@@ -89,7 +149,9 @@ func handleBalancerRequest(w http.ResponseWriter, r *http.Request) {
 	
 	// Ограничиваем историю
 	if len(requests) > 1000 {
+		removed := requests[0]
 		requests = requests[1:]
+		logf("DEBUG", "Removed oldest request from history: %s", removed.ClientIP)
 	}
 	
 	// Обновляем информацию о клиенте
@@ -105,16 +167,27 @@ func handleBalancerRequest(w http.ResponseWriter, r *http.Request) {
 		"stats":   stats,
 	})
 
-	// Логируем в консоль
+	// Логируем в консоль и файл
 	status := "✅ LEGIT"
 	if balancerReq.IsMalicious {
 		status = "🚨 MALICIOUS"
 	}
-	fmt.Printf("%s | %s | %s | %s\n", 
+	
+	consoleMessage := fmt.Sprintf("%s | %s | %s | %s", 
 		status, 
 		balancerReq.ClientIP, 
 		balancerReq.Path, 
 		balancerReq.ReceivedAt.Format("15:04:05"))
+	
+	fmt.Println(consoleMessage)
+	
+	// Логируем в файл с дополнительной информацией
+	logLevel := "INFO"
+	if balancerReq.IsMalicious {
+		logLevel = "WARNING"
+	}
+	logf(logLevel, "Request: %s IP: %s Path: %s Remote: %s", 
+		status, balancerReq.ClientIP, balancerReq.Path, r.RemoteAddr)
 
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]string{"status": "received"})
@@ -129,6 +202,9 @@ func updateClientInfo(request BalancerRequest) {
 		client.RequestCount++
 		// Если запрос вредоносный, помечаем клиента как вредоносного
 		if request.IsMalicious {
+			if !client.IsMalicious {
+				logf("SECURITY", "Client %s marked as MALICIOUS", clientIP)
+			}
 			client.IsMalicious = true
 		}
 	} else {
@@ -139,6 +215,7 @@ func updateClientInfo(request BalancerRequest) {
 			LastSeen:    now,
 			RequestCount: 1,
 		}
+		logf("INFO", "New client registered: %s (Malicious: %v)", clientIP, request.IsMalicious)
 	}
 }
 
@@ -165,6 +242,7 @@ func prepareStats() map[string]interface{} {
 func getUserUpdate(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		logf("WARNING", "Invalid method %s for /api/user_registered from %s", r.Method, r.RemoteAddr)
 		return
 	}
 
@@ -176,9 +254,13 @@ func getUserUpdate(w http.ResponseWriter, r *http.Request) {
 
 	if err := json.NewDecoder(r.Body).Decode(&requestData); err != nil {
 		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		logf("ERROR", "Failed to decode user update JSON from %s: %v", r.RemoteAddr, err)
 		return
 	}
 	defer r.Body.Close()
+
+	logf("INFO", "User update received: legit=%d, malicious=%d", 
+		requestData.LegitClients, requestData.MaliciousClients)
 
 	// Отправляем данные через SSE
 	broadcastToSSEClients("agents_update", map[string]interface{}{
@@ -204,18 +286,25 @@ func getUserUpdate(w http.ResponseWriter, r *http.Request) {
 func handleAgentsUpdate(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		logf("WARNING", "Invalid method %s for /api/agents from %s", r.Method, r.RemoteAddr)
 		return
 	}
 
 	var newAgents AgentsInfo
 	if err := json.NewDecoder(r.Body).Decode(&newAgents); err != nil {
 		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		logf("ERROR", "Failed to decode agents update JSON from %s: %v", r.RemoteAddr, err)
 		return
 	}
 
 	mu.Lock()
+	oldAgents := agents
 	agents = newAgents
 	mu.Unlock()
+
+	logf("INFO", "Agents updated: real_servers=%d->%d, honeypots=%d->%d", 
+		oldAgents.RealServers, agents.RealServers, 
+		oldAgents.Honeypots, agents.Honeypots)
 
 	// Отправляем обновление всем SSE клиентам
 	broadcastToSSEClients("agents_update", map[string]interface{}{
@@ -238,6 +327,7 @@ func handleSSE(w http.ResponseWriter, r *http.Request) {
 	flusher, ok := w.(http.Flusher)
 	if !ok {
 		http.Error(w, "SSE not supported", http.StatusInternalServerError)
+		logf("ERROR", "SSE not supported for client %s", r.RemoteAddr)
 		return
 	}
 
@@ -250,9 +340,11 @@ func handleSSE(w http.ResponseWriter, r *http.Request) {
 	// Регистрируем клиента
 	sseMutex.Lock()
 	sseClients[client] = true
+	currentClients := len(sseClients)
 	sseMutex.Unlock()
 
-	log.Printf("SSE client connected: %s, total clients: %d", client.ID, len(sseClients))
+	logf("INFO", "SSE client connected: %s from %s, total clients: %d", 
+		client.ID, r.RemoteAddr, currentClients)
 
 	// Уведомляем о подключении
 	fmt.Fprintf(w, "event: connected\ndata: {\"clientId\": \"%s\"}\n\n", client.ID)
@@ -287,6 +379,8 @@ func handleSSE(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "data: %s\n\n", string(initialDataJSON))
 	flusher.Flush()
 
+	logf("DEBUG", "Sent initial data to SSE client %s", client.ID)
+
 	// Обрабатываем сообщения для этого клиента
 	for {
 		select {
@@ -295,6 +389,7 @@ func handleSSE(w http.ResponseWriter, r *http.Request) {
 			_, err := fmt.Fprintf(w, "data: %s\n\n", string(message))
 			if err != nil {
 				// Клиент отключился
+				logf("DEBUG", "Error sending to client %s: %v", client.ID, err)
 				break
 			}
 			flusher.Flush()
@@ -303,9 +398,11 @@ func handleSSE(w http.ResponseWriter, r *http.Request) {
 			// Клиент отключился
 			sseMutex.Lock()
 			delete(sseClients, client)
+			remainingClients := len(sseClients)
 			sseMutex.Unlock()
 			close(client.Channel)
-			log.Printf("SSE client disconnected: %s, total clients: %d", client.ID, len(sseClients))
+			logf("INFO", "SSE client disconnected: %s, remaining clients: %d", 
+				client.ID, remainingClients)
 			return
 
 		case <-time.After(30 * time.Second):
@@ -317,6 +414,7 @@ func handleSSE(w http.ResponseWriter, r *http.Request) {
 			pingJSON, _ := json.Marshal(pingData)
 			fmt.Fprintf(w, "data: %s\n\n", string(pingJSON))
 			flusher.Flush()
+			logf("DEBUG", "Sent ping to SSE client %s", client.ID)
 		}
 	}
 }
@@ -329,12 +427,15 @@ func broadcastToSSEClients(eventType string, data interface{}) {
 
 	messageJSON, err := json.Marshal(message)
 	if err != nil {
-		log.Printf("Error marshaling SSE message: %v", err)
+		logf("ERROR", "Error marshaling SSE message: %v", err)
 		return
 	}
 
 	sseMutex.Lock()
 	defer sseMutex.Unlock()
+
+	clientsCount := len(sseClients)
+	skippedClients := 0
 
 	for client := range sseClients {
 		select {
@@ -342,7 +443,13 @@ func broadcastToSSEClients(eventType string, data interface{}) {
 			// Сообщение отправлено
 		default:
 			// Канал заполнен, пропускаем этого клиента
-			log.Printf("SSE client channel full, skipping: %s", client.ID)
+			skippedClients++
+			logf("WARNING", "SSE client channel full, skipping: %s", client.ID)
 		}
+	}
+	
+	if clientsCount > 0 {
+		logf("DEBUG", "Broadcasted %s to %d clients (%d skipped)", 
+			eventType, clientsCount-skippedClients, skippedClients)
 	}
 }
