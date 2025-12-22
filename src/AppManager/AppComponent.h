@@ -20,8 +20,10 @@
 #include <cstring>
 #include <thread>
 #include <atomic>
+#include <vector>
 #include "../common/generic.h"
 #include "../common/logger.h"
+#include "../common/Confparcer.h"
 #if ISLINUX
 #include <unistd.h>
 #include <sys/wait.h>
@@ -68,6 +70,10 @@ inline AppComponent::AppComponent(AppComponentType comp_type)
 {
     switch(comp_type) {
         case AppComponentType::HG_DASHBOARD: {
+            if(!(Confparcer::SETTING<std::string>("DASHBOARD_HOST","127.0.0.1") == "127.0.0.1")){
+                LOG_FATAL("THE DASHBOARD IS NOT RUNNING IN LOCAL MODE");
+                break;
+            }
             path /= "go-apps/";
             path /= "dashboard";
             name = "dashboard";
@@ -161,7 +167,31 @@ inline void AppComponent::monitor_process() {
 #endif
 }
 
+bool findPythonPath(std::string& path) {
+    // Проверяем доступные пути к Python
+    std::vector<std::string> pythonPaths = {
+        "python3",
+        "python",
+        "/usr/bin/python3",
+        "/usr/bin/python",
+        "/usr/local/bin/python3",
+        "/usr/local/bin/python"
+    };
+    
+    for (const auto& pythonPath : pythonPaths) {
+        std::string command = pythonPath + " --version > /dev/null 2>&1";
+        if (system(command.c_str()) == 0) {
+            path = pythonPath;
+            return true;
+        }
+    }
+    
+    return false;
+}
+
 inline bool AppComponent::run() {
+    std::string py;
+    findPythonPath(py);
 #if ISLINUX
     if (is_running.load()) {
         LOG_WARN("Service " + name + " is already running");
@@ -171,8 +201,19 @@ inline bool AppComponent::run() {
     pid_t child_pid = fork();
     if (child_pid == 0) {
         // Дочерний процесс
-        execl(path.c_str(), "", NULL); // FIXME: Приложение ориентируется на cwd, запуск из другой директории не запустит dashboard
-        // Если execl вернул управление - ошибка
+        std::string full_path = py + path;
+        
+        // Подготовка аргументов для execv
+        // argv[0] - имя программы, argv[1] - аргумент (пустая строка), argv[2] - NULL
+        char* argv[] = {
+            const_cast<char*>(full_path.c_str()),
+            const_cast<char*>(""),
+            NULL
+        };
+        
+        execv(full_path.c_str(), argv);
+        
+        // Если execv вернул управление - ошибка
         LOG_ERROR("Failed to run " + name + ": " + std::string(strerror(errno)));
         exit(EXIT_FAILURE);
     }

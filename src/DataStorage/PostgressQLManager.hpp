@@ -65,6 +65,20 @@ bool safe_delete(pqxx::connection& conn,
                                   const std::string& table_name,
                                   const std::vector<std::vector<std::pair<std::string, std::string>>>& batch_conditions);
 
+
+std::string select_where(pqxx::connection& conn,
+                        const std::string& table_name,
+                        const std::string& where_condition,
+                        const std::vector<std::string>& params = {},
+                        const std::string& columns = "*",
+                        const std::string& order_by = "",
+                        int limit = 0);
+
+
+
+    bool delete_single(pqxx::work& txn,
+                                    const std::string& table_name,
+                                    const std::vector<std::pair<std::string, std::string>>& where_conditions);
     
 
 private:
@@ -84,7 +98,9 @@ private:
                                   size_t start_param_index = 1);
 
 
-    bool delete_single(pqxx::work& txn,
-                                    const std::string& table_name,
-                                    const std::vector<std::pair<std::string, std::string>>& where_conditions);
-};
+
+
+
+std::string PostgressQLManager::result_to_string(const pqxx::result& result);
+
+    };

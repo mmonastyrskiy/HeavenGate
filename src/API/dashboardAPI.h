@@ -37,6 +37,10 @@ public:
 
     std::string callClientChange(const int& real_size, const int& malicious_size, int* err = nullptr);
 
+
+    std::string callGetClients(std::string& token);
+    
+
     DashboardAPI() = default;
     ~DashboardAPI() = default;
 
