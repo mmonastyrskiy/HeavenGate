@@ -119,5 +119,6 @@
         "unordered_set": "cpp"
     },
     "C_Cpp.errorSquiggles": "enabled",
-    "todo-tree.tree.scanMode": "workspace"
+    "todo-tree.tree.scanMode": "workspace",
+    "C_Cpp.default.compilerPath": "C:/Users/Максим/gcc/bin/g++.exe"
 }

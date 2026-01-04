@@ -6,6 +6,9 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+find_package(Crow REQUIRED)
+
+
 # Исходные файлы основного приложения
 set(SRC_FILES
     API/dashboardAPI.cpp
@@ -211,6 +214,7 @@ target_include_directories(heavengate PRIVATE
 # Зависимости основного приложения
 target_link_libraries(heavengate PRIVATE
     pthread
+    Crow::Crow
     ${CURL_TARGET}
     ${LIBPQXX_LIBRARIES}
     ${PLATFORM_LIBS}
