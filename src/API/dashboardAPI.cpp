@@ -290,7 +290,12 @@ std::string DashboardAPI::callRequestRegistered(const std::string& client_ip,
 }
 std::string DashboardAPI::callGetClients(std::string& token){
     int e {0};
-    if token.isempty()
+    if (token.isempty())
+    {
+        e = 1;
+        ret_401(e);
+
+    }
     std::optional<Userland::User> tu = Userland::User::load_web_token(token,&e);
     if(!tu){
         return ret_401(e);
