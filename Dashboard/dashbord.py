@@ -1,9 +1,10 @@
+# pyright: ignore[reportMissingImports]
 import json
 import logging
 import time
 import threading
 import asyncio
-import websockets
+import websockets # type: ignore
 from datetime import datetime
 from typing import Dict, List, Set, Any, Optional
 from dataclasses import dataclass, asdict, field
@@ -11,12 +12,12 @@ from collections import defaultdict, deque
 from contextlib import asynccontextmanager
 from enum import Enum
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, FileResponse
-from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
-import uvicorn
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException  # pyright: ignore[reportMissingImports]
+from fastapi.middleware.cors import CORSMiddleware # pyright: ignore[reportMissingImports]
+from fastapi.responses import HTMLResponse, FileResponse # pyright: ignore[reportMissingImports]
+from fastapi.staticfiles import StaticFiles # pyright: ignore[reportMissingImports]
+from pydantic import BaseModel # pyright: ignore[reportMissingImports]
+import uvicorn # pyright: ignore[reportMissingImports]
 
 # Модели данных
 class RequestType(str, Enum):
