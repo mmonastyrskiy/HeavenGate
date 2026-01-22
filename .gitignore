@@ -2,3 +2,4 @@
 ./build
 ./thirdparty
 thirdparty/libpqxx
+.vscode/c_cpp_properties.json

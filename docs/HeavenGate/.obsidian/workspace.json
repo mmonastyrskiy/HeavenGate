@@ -37,35 +37,6 @@
           }
         ],
         "currentTab": 1
-      },
-      {
-        "id": "f4ea827f0b9b1d6f",
-        "type": "tabs",
-        "children": [
-          {
-            "id": "d1c40fdbd312be38",
-            "type": "leaf",
-            "state": {
-              "type": "graph",
-              "state": {},
-              "icon": "lucide-git-fork",
-              "title": "Граф"
-            }
-          },
-          {
-            "id": "f55bcdce524206b0",
-            "type": "leaf",
-            "state": {
-              "type": "release-notes",
-              "state": {
-                "currentVersion": "1.10.6"
-              },
-              "icon": "lucide-book-up",
-              "title": "примечания к выпуску 1.10.6"
-            }
-          }
-        ],
-        "currentTab": 1
       }
     ],
     "direction": "vertical"
@@ -213,8 +184,9 @@
       "bases:Создать новую базу": false
     }
   },
-  "active": "f55bcdce524206b0",
+  "active": "975555d3da30f216",
   "lastOpenFiles": [
+    "Без названия.md",
     "разработка/Задачи.md",
     "разработка/баги.md",
     "разработка",

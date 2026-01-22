@@ -8,14 +8,21 @@
  */
 
 #include "dashboardAPI.h"
+#include "dashboardAPIreply.hpp"
 #include <curl/curl.h>
 #include <iostream>
 #include <chrono>
 #include <sstream>
 #include <iomanip>
 #include <memory>
+#include <algorithm>
+#include <optional>
 #include "../common/logger.h"
 #include "../common/Confparcer.h"
+#include "../DataStorage/PostgressQLManager.hpp"
+#include "../common/generic.h"
+#include "../User/User.hpp"
+#include <DataSecurity.hpp>
 
 
 
@@ -282,4 +289,44 @@ std::string DashboardAPI::callRequestRegistered(const std::string& client_ip,
     
     return response;
 }
+std::string DashboardAPI::callGetClients(std::string& token){
+    int e {0};
+    if(!std::all_of(token.begin(),token.end(),::isalnum)){
+        e=1;
+        return ret_401(e);
+    }
+    std::optional<Userland::User> tu = Userland::User::load_web_token(token,&e);
+    if(!tu){
+        return ret_401(e);
+    }
+    
+    Userland::User& u = tu.value();  // Use reference to avoid copy
+    
+    if(!u.hasPermission(Userland::User::Permissions::VIEW_CLIENTS)) {
+        return ret_403("You have no permission to view clients");
+    }
+    
+    try {
+        PostgressQLManager pgm;
+        if(!pgm.is_connected()){
+            pgm.connect();
+            if(!pgm.is_connected()) {
+                return ret_500("Database connection failed");
+            }
+        }
+        
+        auto& conn = pgm.get_connection();
+        std::string data = pgm.select_where(conn, "clients", "is_active = TRUE");
+        
+        if(u.hasPermission(Userland::User::Permissions::PERSONAL_DATA_VIEW)){
+            return ret_200(data);
+        } else {
+            return ret_200(utils::MaskIPs(data));
+        }
+    } catch(const std::exception& e) {
+        // Log the error
+        return ret_500("Database error");
+    }
+}
+
 

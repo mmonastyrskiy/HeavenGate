@@ -5,6 +5,7 @@
 #include <memory>
 #include "../common/Confparcer.h"
 #include "../common/logger.h"
+#include <DataSecurity.hpp>
 #include "PostgressQLManager.hpp"
 #include "PostgressQL_query.hpp"
 
@@ -512,4 +513,85 @@ bool PostgressQLManager::is_valid_table_name(const std::string& table_name){
     }
     LOG_ERROR("Unknown table: " + table_name);
     return false;
+}
+std::string PostgressQLManager::select_where(pqxx::connection& conn,
+                                           const std::string& table_name,
+                                           const std::string& where_condition,
+                                           const std::vector<std::string>& params,
+                                           const std::string& columns,
+                                           const std::string& order_by,
+                                           int limit) {
+    try {
+        pqxx::work txn(conn);
+        
+        // Построение запроса
+        std::string query = "SELECT " + columns + 
+                           " FROM \"" + table_name + "\"";
+        
+        if (!where_condition.empty()) {
+            query += " WHERE " + where_condition;
+        }
+        
+        if (!order_by.empty()) {
+            query += " ORDER BY " + order_by;
+        }
+        
+        if (limit > 0) {
+            query += " LIMIT " + std::to_string(limit);
+        }
+        
+        // Выполнение запроса с параметрами
+        pqxx::result result;
+        if (params.empty()) {
+            result = txn.exec(query);
+        } else {
+            result = txn.exec(query, pqxx::params{params});
+        }
+        
+        txn.commit();
+        return result_to_string(result);
+    }
+    catch (const std::exception& e) {
+        LOG_ERROR("SELECT WHERE error: " + std::string(e.what()));
+        throw;
+    }
+}
+
+std::string PostgressQLManager::result_to_string(const pqxx::result& result) {
+    if (result.empty()) {
+        return "No results found";
+    }
+    
+    std::stringstream ss;
+    
+    if (!result.empty()) {
+        const auto& first_row = result[0];
+        for (pqxx::row::size_type i = 0; i < first_row.size(); ++i) {
+            if (i > 0) ss << " | ";
+            ss << result.column_name(i);
+        }
+    }
+    ss << "\n" << std::string(ss.str().length(), '-') << "\n";
+    
+    // Данные
+    for (const auto& row : result) {
+        for (pqxx::row::size_type i = 0; i < row.size(); ++i) {
+            if (i > 0) ss << " | ";
+            
+            if (row[i].is_null()) {
+                ss << "NULL";
+            } else {
+                // Безопасное преобразование в строку
+                try {
+                    ss << row[i].as<std::string>();
+                } catch (const std::exception& e) {
+                    ss << "[Conversion error]";
+                }
+            }
+        }
+        ss << "\n";
+    }
+    
+    ss << "\nTotal rows: " << result.size();
+    return ss.str();
 }

@@ -6,10 +6,12 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-# Исходные файлы
+find_package(Crow REQUIRED)
+
+
+# Исходные файлы основного приложения
 set(SRC_FILES
     API/dashboardAPI.cpp
-    API/SysController.cpp
     AppManager/AppManager.cpp
     common/Argparcer.cpp
     common/Confparcer.cpp
@@ -21,6 +23,7 @@ set(SRC_FILES
     LoadBalancer/LoadBalancer.cpp
     main.cpp
     ReqClassifier/ReqParser.cpp
+    User/User.cpp
 )
 
 set(HEADER_FILES
@@ -28,7 +31,6 @@ set(HEADER_FILES
     ../include/strconv.h
     ../thirdparty/json.hpp
     API/dashboardAPI.h
-    API/SysController.hpp
     AppManager/AppComponent.h
     AppManager/AppManager.h
     common/Argparcer.h
@@ -43,55 +45,59 @@ set(HEADER_FILES
     DataStorage/PostgressQLManager.hpp
     DataStorage/ElasticStorage.hpp
     DataStorage/PostgressQL_query.hpp
+    DataStorage/DataSecurity.hpp
     LoadBalancer/LoadBalancer.h
     ReqClassifier/ReqParser.hpp
     ReqClassifier/ReqClassifier.hpp
+    User/User.hpp
 )
 
 # ==================== GO DASHBOARD ====================
 
-# Проверяем наличие Go // TODO: MIGRATE ME TO THE SEPARATE FILE 
-find_program(GO_EXECUTABLE go)
-if(GO_EXECUTABLE)
-    # Получаем абсолютный путь к директории Go проекта
-    get_filename_component(GO_DASHBOARD_DIR 
-        "${CMAKE_SOURCE_DIR}/go-services/Dashboard" 
-        ABSOLUTE
-    )
+# Проверяем наличие Go
+# find_program(GO_EXECUTABLE go)
+# if(GO_EXECUTABLE)
+#     # Получаем абсолютный путь к директории Go проекта
+#     get_filename_component(GO_DASHBOARD_DIR 
+#         "${CMAKE_SOURCE_DIR}/go-services/Dashboard" 
+#         ABSOLUTE
+#     )
     
-    # Проверяем существует ли go.mod файл
-    if(EXISTS "${GO_DASHBOARD_DIR}/go.mod")
-        # Создаем директорию для выходных файлов Go
-        set(GO_OUTPUT_DIR "${CMAKE_BINARY_DIR}/bin/go-apps")
+#     # Проверяем существует ли go.mod файл
+#     if(EXISTS "${GO_DASHBOARD_DIR}/go.mod")
+#         # Создаем директорию для выходных файлов Go
+#         set(GO_OUTPUT_DIR "${CMAKE_BINARY_DIR}/bin/go-apps")
         
-        add_custom_command(
-            OUTPUT ${GO_OUTPUT_DIR}/dashboard
-            COMMAND ${CMAKE_COMMAND} -E make_directory ${GO_OUTPUT_DIR}
-            COMMAND ${GO_EXECUTABLE} build -o ${GO_OUTPUT_DIR}/dashboard .
-            WORKING_DIRECTORY ${GO_DASHBOARD_DIR}
-            COMMENT "Building Go Dashboard"
-            VERBATIM
-        )
+#         add_custom_command(
+#             OUTPUT ${GO_OUTPUT_DIR}/dashboard
+#             COMMAND ${CMAKE_COMMAND} -E make_directory ${GO_OUTPUT_DIR}
+#             COMMAND ${GO_EXECUTABLE} build -o ${GO_OUTPUT_DIR}/dashboard .
+#             WORKING_DIRECTORY ${GO_DASHBOARD_DIR}
+#             COMMENT "Building Go Dashboard"
+#             VERBATIM
+#         )
         
-        add_custom_target(go-dashboard ALL
-            DEPENDS ${GO_OUTPUT_DIR}/dashboard
-        )
+#         add_custom_target(go-dashboard ALL
+#             DEPENDS ${GO_OUTPUT_DIR}/dashboard
+#         )
         
-        # Установка Go бинарника
-        install(
-            FILES ${GO_OUTPUT_DIR}/dashboard
-            DESTINATION bin/go-apps
-            PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
-        )
+#         # Установка Go бинарника
+#         install(
+#             FILES ${GO_OUTPUT_DIR}/dashboard
+#             DESTINATION bin/go-apps
+#             PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
+#         )
         
-    else()
-        message(WARNING "go.mod not found in ${GO_DASHBOARD_DIR}. Go dashboard will not be built.")
-        add_custom_target(go-dashboard COMMENT "Go dashboard skipped - no go.mod found")
-    endif()
-else()
-    message(WARNING "Go compiler not found. Go dashboard will not be built.")
-    add_custom_target(go-dashboard COMMENT "Go dashboard skipped - Go not found")
-endif()
+#     else()
+#         message(WARNING "go.mod not found in ${GO_DASHBOARD_DIR}. Go dashboard will not be built.")
+#         add_custom_target(go-dashboard COMMENT "Go dashboard skipped - no go.mod found")
+#     endif()
+# else()
+#     message(WARNING "Go compiler not found. Go dashboard will not be built.")
+#     add_custom_target(go-dashboard COMMENT "Go dashboard skipped - Go not found")
+# endif()
+
+# ==================== ОСНОВНОЕ ПРИЛОЖЕНИЕ ====================
 
 # Основной исполняемый файл
 add_executable(heavengate
@@ -99,6 +105,7 @@ add_executable(heavengate
     ${HEADER_FILES}
 )
 
+# Добавляем зависимости
 if(GO_EXECUTABLE AND EXISTS "${GO_DASHBOARD_DIR}/go.mod")
     add_dependencies(heavengate go-dashboard)
 endif()
@@ -117,11 +124,12 @@ target_include_directories(colorText INTERFACE
     ${CMAKE_SOURCE_DIR}/include
 )
 
-
+# ASIO библиотека
 add_library(asio INTERFACE)
 target_include_directories(asio INTERFACE ${CMAKE_SOURCE_DIR}/thirdparty/asio/include)
 target_compile_definitions(asio INTERFACE ASIO_STANDALONE ASIO_HEADER_ONLY)
 target_compile_features(asio INTERFACE cxx_std_17)
+
 # ==================== КОНЕЦ HEADER-ONLY БИБЛИОТЕК ====================
 
 # Определяем целевую ОС
@@ -143,11 +151,22 @@ endif()
 
 # Поиск CURL
 find_package(CURL QUIET)
-#Поиск постгресс
+# Поиск PostgreSQL
 find_package(PostgreSQL REQUIRED)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(LIBPQXX REQUIRED libpqxx)
 
+# Поиск MaxMindDB
+find_library(MAXMINDDB_LIB maxminddb)
+find_path(MAXMINDDB_INCLUDE_DIR maxminddb.h
+    PATH_SUFFIXES maxminddb
+)
+
+if(MAXMINDDB_LIB AND MAXMINDDB_INCLUDE_DIR)
+    message(STATUS "Found MaxMindDB: ${MAXMINDDB_LIB}")
+else()
+    message(WARNING "MaxMindDB not found. geo2ip functionality may be limited.")
+endif()
 
 if(NOT CURL_FOUND)
     # Fallback: ручной поиск если find_package не сработал
@@ -177,30 +196,25 @@ if(CURL_FOUND)
         add_library(curl_lib INTERFACE)
         target_include_directories(curl_lib INTERFACE ${CURL_INCLUDE_DIR})
         target_link_libraries(curl_lib INTERFACE ${CURL_LIBRARY})
-
-        target_include_directories(ip_lookup PRIVATE ${MAXMINDDB_INCLUDE_DIR})
-        target_link_libraries(ip_lookup ${MAXMINDDB_LIB})
-
-
         set(CURL_TARGET curl_lib)
     endif()
 else()
     message(WARNING "CURL not found. Some features may be unavailable.")
 endif()
 
-
-
-# Заголовочные файлы
+# Заголовочные файлы для основного приложения
 target_include_directories(heavengate PRIVATE
     ${CMAKE_SOURCE_DIR}/include
     ${CMAKE_SOURCE_DIR}/thirdparty
     ${LIBPQXX_INCLUDE_DIRS}
     ${CMAKE_CURRENT_SOURCE_DIR}
+    ${MAXMINDDB_INCLUDE_DIR}
 )
 
-# Зависимости
+# Зависимости основного приложения
 target_link_libraries(heavengate PRIVATE
     pthread
+    Crow::Crow
     ${CURL_TARGET}
     ${LIBPQXX_LIBRARIES}
     ${PLATFORM_LIBS}
@@ -209,10 +223,8 @@ target_link_libraries(heavengate PRIVATE
     asio
     pqxx
     pq
-    maxminddb
+    ${MAXMINDDB_LIB}
     PostgreSQL::PostgreSQL
-
-
 )
 
 # Компиляционные флаги
@@ -229,5 +241,5 @@ set_target_properties(heavengate PROPERTIES
     LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
 )
 
-# Установка
+# Установка основного приложения
 install(TARGETS heavengate DESTINATION bin)

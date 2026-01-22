@@ -44,6 +44,8 @@ void init(){
     }
     auto& conn = pgm.get_connection();
     pgm.create_table_safely(conn,"clients");
+    pgm.create_table_safely(conn,"users");
+
 
 
 

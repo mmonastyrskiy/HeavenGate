@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link
   rel="stylesheet"
-  href="https://cdn.jsdelivr.net/gh/lipis/flag-icons@7.3.2/css/flag-icons.min.css"> <!--TODO: Use this to display flags -->
+  href="https://cdn.jsdelivr.net/gh/lipis/flag-icons@7.3.2/css/flag-icons.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         /* Все предыдущие стили остаются */
@@ -529,6 +529,87 @@
             background-color: #2980b9;
         }
 
+        /* Стили для состояний загрузки и ошибок */
+        .loading-cell, .error-cell, .empty-cell {
+            text-align: center;
+            padding: 40px !important;
+            color: #666;
+        }
+
+        .loading-cell .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+
+        .error-cell {
+            color: #e74c3c;
+        }
+
+        .error-cell .fa-exclamation-triangle {
+            margin-right: 10px;
+            font-size: 18px;
+        }
+
+        .empty-cell .fa-users-slash {
+            margin-right: 10px;
+            font-size: 18px;
+            color: #95a5a6;
+        }
+
+        .retry-btn {
+            margin-left: 15px;
+            padding: 5px 15px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .retry-btn:hover {
+            background-color: #2980b9;
+        }
+
+        .retry-btn .fa-redo {
+            margin-right: 5px;
+        }
+
+        .refresh-btn {
+            background: none;
+            border: none;
+            color: #3498db;
+            cursor: pointer;
+            font-size: 16px;
+            margin-left: 10px;
+            padding: 5px 10px;
+            border-radius: 4px;
+        }
+
+        .refresh-btn:hover {
+            background-color: #f8f9fa;
+        }
+
+        .refresh-btn.rotating {
+            animation: rotate 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
         /* Адаптивность */
         @media (max-width: 768px) {
             .sidebar {
@@ -816,20 +897,7 @@ let chartData = {
     malicious: Array(24).fill(0)
 };
 
-// Тестовые данные для страницы пользователей
-const testClients = [
-    { ip: "192.168.1.100", country: "us", isMalicious: false, serverId: "srv-web-01" },
-    { ip: "10.0.0.50", country: "ru", isMalicious: true, serverId: "srv-honeypot-02" },
-    { ip: "172.16.0.25", country: "cn", isMalicious: false, serverId: "srv-api-03" },
-    { ip: "203.0.113.45", country: "de", isMalicious: true, serverId: "srv-honeypot-01" },
-    { ip: "198.51.100.123", country: "fr", isMalicious: false, serverId: "srv-web-02" },
-    { ip: "203.0.113.67", country: "uk", isMalicious: false, serverId: "srv-db-01" },
-    { ip: "192.0.2.189", country: "jp", isMalicious: true, serverId: "srv-honeypot-03" },
-    { ip: "198.51.100.204", country: "br", isMalicious: false, serverId: "srv-web-03" },
-    { ip: "203.0.113.12", country: "us", isMalicious: true, serverId: "srv-honeypot-04" },
-    { ip: "192.0.2.55", country: "ru", isMalicious: false, serverId: "srv-api-02" }
-];
-
+// Словарь стран
 const countryNames = {
     us: "США",
     ru: "Россия",
@@ -838,7 +906,13 @@ const countryNames = {
     fr: "Франция",
     uk: "Великобритания",
     jp: "Япония",
-    br: "Бразилия"
+    br: "Бразилия",
+    ua: "Украина",
+    kz: "Казахстан",
+    tr: "Турция",
+    in: "Индия",
+    au: "Австралия",
+    ca: "Канада"
 };
 
 // ==================== УПРАВЛЕНИЕ НАВИГАЦИЕЙ ====================
@@ -1004,7 +1078,7 @@ function generateTimeLabels() {
 
 function connectSSE() {
     try {
-        eventSource = new EventSource('/events');
+        eventSource = new EventSource('/ws');
         
         eventSource.onopen = function(event) {
             console.log('SSE connection opened');
@@ -1323,12 +1397,108 @@ function addRequestToTable(request, tableBody) {
 
 // ==================== СТРАНИЦА ПОЛЬЗОВАТЕЛЕЙ ====================
 
-function initializeUsersPage() {
-    renderClientsTable(testClients);
+async function initializeUsersPage() {
+    await fetchAndRenderClients();
+    
+    // Добавляем обработчик для поиска
+    const searchInput = document.getElementById('search-input');
+    if (searchInput) {
+        searchInput.addEventListener('input', function(e) {
+            const query = e.target.value.trim().toLowerCase();
+            const filteredClients = window.clientsData ? window.clientsData.filter(client => {
+                return client.ip.toLowerCase().includes(query) ||
+                       (countryNames[client.country] || '').toLowerCase().includes(query) ||
+                       (client.serverId || '').toLowerCase().includes(query) ||
+                       (client.isMalicious ? 'вредоносный' : 'легитимный').includes(query);
+            }) : [];
+            
+            renderClientsTable(filteredClients, query.length > 0);
+        });
+    }
 }
 
-function renderClientsTable(clients) {
+async function fetchAndRenderClients() {
+    try {
+        // Показать индикатор загрузки
+        const tableBody = document.getElementById('users-table-body');
+        tableBody.innerHTML = `
+            <tr>
+                <td colspan="5" class="loading-cell">
+                    <div class="loading-spinner"></div>
+                    <span>Загрузка данных о клиентах...</span>
+                </td>
+            </tr>
+        `;
+
+        // Анимация для кнопки обновления
+        const refreshBtn = document.getElementById('refresh-btn');
+        if (refreshBtn) {
+            refreshBtn.classList.add('rotating');
+            refreshBtn.disabled = true;
+        }
+
+        // Выполнить запрос к API
+        const response = await fetch('/api/clients');
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const clients = await response.json();
+        
+        // Сохраняем данные в глобальной переменной для поиска
+        window.clientsData = clients;
+        
+        // Отрисовать таблицу с полученными данными
+        renderClientsTable(clients);
+        
+    } catch (error) {
+        console.error('Ошибка при загрузке клиентов:', error);
+        
+        // Показать сообщение об ошибке
+        const tableBody = document.getElementById('users-table-body');
+        tableBody.innerHTML = `
+            <tr>
+                <td colspan="5" class="error-cell">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <span>Ошибка при загрузке данных: ${error.message}</span>
+                    <button onclick="fetchAndRenderClients()" class="retry-btn">
+                        <i class="fas fa-redo"></i> Повторить попытку
+                    </button>
+                </td>
+            </tr>
+        `;
+    } finally {
+        // Убираем анимацию с кнопки
+        const refreshBtn = document.getElementById('refresh-btn');
+        if (refreshBtn) {
+            refreshBtn.classList.remove('rotating');
+            refreshBtn.disabled = false;
+        }
+    }
+}
+
+function renderClientsTable(clients, isFiltered = false) {
     const tableBody = document.getElementById('users-table-body');
+    
+    // Если клиентов нет
+    if (!clients || clients.length === 0) {
+        const message = isFiltered 
+            ? 'Клиенты не найдены'
+            : 'Нет данных о клиентах';
+            
+        tableBody.innerHTML = `
+            <tr>
+                <td colspan="5" class="empty-cell">
+                    <i class="fas fa-users-slash"></i>
+                    <span>${message}</span>
+                </td>
+            </tr>
+        `;
+        document.getElementById('total-clients').textContent = '0';
+        return;
+    }
+
     tableBody.innerHTML = '';
 
     clients.forEach(client => {
@@ -1336,6 +1506,7 @@ function renderClientsTable(clients) {
         const statusClass = client.isMalicious ? 'status-malicious' : 'status-legit';
         const statusText = client.isMalicious ? 'Вредоносный' : 'Легитимный';
         const countryName = countryNames[client.country] || client.country;
+        const serverId = client.serverId || 'Не указан';
 
         row.innerHTML = `
             <td>
@@ -1344,14 +1515,16 @@ function renderClientsTable(clients) {
                 </a>
             </td>
             <td>
-                <span class="flag flag-${client.country}" title="${countryName}"></span>
-                ${countryName}
+                ${client.country ? `
+                    <span class="flag flag-${client.country}" title="${countryName}"></span>
+                    ${countryName}
+                ` : 'Неизвестно'}
             </td>
             <td>
                 <span class="status-badge ${statusClass}">${statusText}</span>
             </td>
             <td>
-                <span class="server-id">${client.serverId}</span>
+                <span class="server-id">${serverId}</span>
             </td>
             <td>
                 <div class="context-menu">
@@ -1359,13 +1532,13 @@ function renderClientsTable(clients) {
                         <i class="fas fa-ellipsis-v"></i>
                     </button>
                     <div class="context-menu-content">
-                        <a href="/client/${client.ip}" class="context-menu-item">
+                        <a href="/client/${client.id}" class="context-menu-item">
                             <i class="fas fa-info-circle"></i>Подробности
                         </a>
-                        <a href="#" class="context-menu-item" onclick="blockClient('${client.ip}')">
+                        <a href="#" class="context-menu-item" onclick="blockClient('${client.id}')">
                             <i class="fas fa-ban"></i>Заблокировать
                         </a>
-                        <a href="#" class="context-menu-item" onclick="analyzeClient('${client.ip}')">
+                        <a href="#" class="context-menu-item" onclick="analyzeClient('${client.id}')">
                             <i class="fas fa-search"></i>Проанализировать
                         </a>
                     </div>
@@ -1377,6 +1550,16 @@ function renderClientsTable(clients) {
     });
 
     document.getElementById('total-clients').textContent = clients.length;
+}
+
+function refreshClientsTable() {
+    // Сброс поиска
+    const searchInput = document.getElementById('search-input');
+    if (searchInput) {
+        searchInput.value = '';
+    }
+    
+    fetchAndRenderClients();
 }
 
 function toggleContextMenu(button) {
@@ -1402,7 +1585,28 @@ function toggleContextMenu(button) {
 }
 
 function blockClient(ip) {
-    alert(`Блокировка клиента ${ip} - функционал в разработке`);
+    if (confirm(`Вы уверены, что хотите заблокировать клиента ${ip}?`)) {
+        // Отправляем запрос на блокировку
+        fetch(`/api/block/${ip}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => {
+            if (response.ok) {
+                alert(`Клиент ${ip} успешно заблокирован`);
+                // Обновляем таблицу
+                refreshClientsTable();
+            } else {
+                alert(`Ошибка при блокировке клиента ${ip}`);
+            }
+        })
+        .catch(error => {
+            console.error('Error blocking client:', error);
+            alert('Ошибка сети при блокировке клиента');
+        });
+    }
     document.querySelectorAll('.context-menu-content').forEach(menu => {
         menu.classList.remove('show');
     });
@@ -1413,16 +1617,6 @@ function analyzeClient(ip) {
     document.querySelectorAll('.context-menu-content').forEach(menu => {
         menu.classList.remove('show');
     });
-}
-
-function searchClients(query) {
-    const filteredClients = testClients.filter(client => {
-        const searchLower = query.toLowerCase();
-        return client.ip.toLowerCase().includes(searchLower) ||
-               countryNames[client.country].toLowerCase().includes(searchLower) ||
-               client.serverId.toLowerCase().includes(searchLower);
-    });
-    renderClientsTable(filteredClients);
 }
 
 // ==================== ОБРАБОТЧИКИ СОБЫТИЙ ====================
@@ -1455,22 +1649,10 @@ function setupEventListeners() {
         });
     });
 
-    // Поиск на странице пользователей
-    const searchInput = document.getElementById('search-input');
-    if (searchInput) {
-        searchInput.addEventListener('input', function(e) {
-            searchClients(e.target.value);
-        });
-    }
-
     // Кнопка обновления на странице пользователей
     const refreshBtn = document.getElementById('refresh-btn');
     if (refreshBtn) {
-        refreshBtn.addEventListener('click', function() {
-            renderClientsTable(testClients);
-            document.getElementById('search-input').value = '';
-            alert('Данные обновлены');
-        });
+        refreshBtn.addEventListener('click', refreshClientsTable);
     }
 
     // Обработка ссылок на детальную информацию о клиенте
@@ -1478,6 +1660,7 @@ function setupEventListeners() {
         if (e.target.classList.contains('ip-link')) {
             e.preventDefault();
             const ip = e.target.textContent;
+            // Здесь можно добавить переход на страницу детальной информации
             alert(`Подробная информация о клиенте ${ip} - страница в разработке`);
         }
     });
@@ -1497,54 +1680,11 @@ function setupEventListeners() {
     });
 }
 
-// ==================== ДЕМО-ДАННЫЕ ДЛЯ ТЕСТИРОВАНИЯ ====================
-/*
-function initializeDemoData() {
-    // Добавляем демо-данные для главной страницы
-    setTimeout(() => {
-        const demoRequests = [
-            {
-                clientIP: '192.168.1.100',
-                path: '/api/login',
-                isMalicious: false,
-                receivedAt: new Date()
-            },
-            {
-                clientIP: '10.0.0.50',
-                path: '/admin/panel',
-                isMalicious: true,
-                receivedAt: new Date(Date.now() - 300000)
-            },
-            {
-                clientIP: '172.16.0.25',
-                path: '/api/data',
-                isMalicious: false,
-                receivedAt: new Date(Date.now() - 600000)
-            }
-        ];
-        
-        requests = demoRequests;
-        updateRequestsTable();
-        
-        // Обновляем статистику
-        updateAllStats({
-            totalRequests: demoRequests.length,
-            legitClients: 2,
-            maliciousClients: 1,
-            agents: { realServers: 3, honeypots: 5 }
-        });
-    }, 1000);
-}
-
-*/
 // ==================== ИНИЦИАЛИЗАЦИЯ ПРИЛОЖЕНИЯ ====================
 
 document.addEventListener('DOMContentLoaded', function() {
     // Настраиваем обработчики событий
     setupEventListeners();
-    
-    // Инициализируем демо-данные
-    //initializeDemoData();
     
     // Инициализируем график
     initializeChart();
@@ -1555,6 +1695,14 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Подключаемся к SSE
     connectSSE();
+    
+    // Автоматическое обновление данных каждые 30 секунд
+    setInterval(() => {
+        const currentPage = window.location.hash.substring(1) || 'home';
+        if (currentPage === 'users' && window.clientsData) {
+            fetchAndRenderClients();
+        }
+    }, 30000);
 });
 
 // ==================== ГЛОБАЛЬНЫЕ ФУНКЦИИ ДЛЯ HTML ====================
@@ -1563,7 +1711,8 @@ document.addEventListener('DOMContentLoaded', function() {
 window.toggleContextMenu = toggleContextMenu;
 window.blockClient = blockClient;
 window.analyzeClient = analyzeClient;
-window.searchClients = searchClients;
+window.fetchAndRenderClients = fetchAndRenderClients;
+window.refreshClientsTable = refreshClientsTable;
     </script>
 </body>
 </html>
