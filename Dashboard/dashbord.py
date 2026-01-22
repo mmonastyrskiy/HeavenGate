@@ -32,6 +32,7 @@ class BalancerRequest(BaseModel):
     receivedAt: datetime = field(default_factory=datetime.now)
 
 class ClientInfo(BaseModel):
+    id: str
     ip: str
     isMalicious: bool
     firstSeen: datetime

@@ -1078,7 +1078,7 @@ function generateTimeLabels() {
 
 function connectSSE() {
     try {
-        eventSource = new EventSource('/events');
+        eventSource = new EventSource('/ws');
         
         eventSource.onopen = function(event) {
             console.log('SSE connection opened');
