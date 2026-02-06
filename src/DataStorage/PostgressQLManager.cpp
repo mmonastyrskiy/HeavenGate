@@ -508,7 +508,7 @@ bool PostgressQLManager::delete_single(pqxx::work& txn,
     return true;
 }
 bool PostgressQLManager::is_valid_table_name(const std::string& table_name){
-    if (table_name == "clients"){
+    if (table_name == "clients" || table_name == "users" || table_name == "user_web_tokens"){
         return true;
     }
     LOG_ERROR("Unknown table: " + table_name);

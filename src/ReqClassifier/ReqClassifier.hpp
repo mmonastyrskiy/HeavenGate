@@ -17,7 +17,7 @@ namespace Classifier{
         auto json = Classifier::HttpRequestParser::jsonify(req);
 
         auto ehost = Confparcer::SETTING<std::string>("ELASTIC_HOST","127.0.0.1");
-        auto eport = Confparcer::SETTING<size_t>("ELASTIC_HOST",9200);
+        auto eport = Confparcer::SETTING<size_t>("ELASTIC_PORT",9200);
         SimpleElasticsearchClient elastic(ehost,static_cast<int> (eport)); // FIXME: MAY CAUSE PROBLEMS DUE TO INT LIMITS EXCEED
         if(!elastic.testConnection()){
             LOG_ERROR("Cannot verify connection to the Elastic");

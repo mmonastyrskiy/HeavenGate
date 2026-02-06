@@ -52,6 +52,25 @@ CREATE INDEX idx_users_is_active ON users(is_active);
 CREATE INDEX idx_users_pw_update_date ON users(pw_update_date))"
 };
 
+table_description user_web_tokens = {{"token_hash","user_id","created_at","expires_at","last_used_at"},
+R"(CREATE TABLE user_web_tokens (
+    token_hash VARCHAR(64) PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    last_used_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    
+    CONSTRAINT fk_user_id FOREIGN KEY (user_id) 
+        REFERENCES users(user_id) 
+        ON DELETE CASCADE
+);
+
+-- Индексы для улучшения производительности
+CREATE INDEX idx_user_web_tokens_user_id ON user_web_tokens(user_id);
+CREATE INDEX idx_user_web_tokens_expires_at ON user_web_tokens(expires_at);
+CREATE INDEX idx_user_web_tokens_token_hash ON user_web_tokens(token_hash))"
+};
+
 
 
 PSQLTables lookup_table(const std::string& tablename){
@@ -60,6 +79,9 @@ PSQLTables lookup_table(const std::string& tablename){
     }
     if(tablename == "users"){
         return PSQLTables::USERS_TABLE;
+    }
+    if(tablename == "user_web_tokens"){
+        return PSQLTables::USERS_WEB_SESSION;
     }
     else{
     LOG_FATAL("Uknown table" + tablename +" lookup");
@@ -72,7 +94,9 @@ std::string get_create_statement(PSQLTables tablename)  {
     case PSQLTables::VISITORS_TABLE: 
         return clients.create;
     case PSQLTables::USERS_TABLE:
-    return users.create;
+        return users.create;
+    case PSQLTables::USERS_WEB_SESSION:
+        return user_web_tokens.create;
     
     default:
         VERIFY_NOT_REACHED();
@@ -87,7 +111,10 @@ std::vector<std::string> get_cols(PSQLTables tablename)  {
         return clients.cols;
     
     case PSQLTables::USERS_TABLE:
-    return users.cols;
+        return users.cols;
+    
+    case PSQLTables::USERS_WEB_SESSION:
+        return user_web_tokens.cols;
     
     default:
         VERIFY_NOT_REACHED();

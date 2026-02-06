@@ -52,6 +52,16 @@ DashboardAPI& DashboardAPI::the() {
     return instance;
 }
 
+// Constructor - initialize curl once
+DashboardAPI::DashboardAPI() {
+    curl_global_init(CURL_GLOBAL_DEFAULT);
+}
+
+// Destructor - cleanup curl
+DashboardAPI::~DashboardAPI() {
+    curl_global_cleanup();
+}
+
 
 
 std::string DashboardAPI::callClientChange(const int& real_size, const int& malicious_size, int* err){
@@ -61,13 +71,11 @@ std::string DashboardAPI::callClientChange(const int& real_size, const int& mali
     CURLcode res;
     std::string response;
     
-    // Initialize cURL
-    curl_global_init(CURL_GLOBAL_DEFAULT);
+    // Initialize cURL handle (curl_global_init already called in constructor)
     curl = curl_easy_init();
     
     if(!curl) {
         if(err) *err = -1;
-        curl_global_cleanup();
         return "";
     }
     
@@ -126,7 +134,6 @@ std::string DashboardAPI::callClientChange(const int& real_size, const int& mali
     // Cleanup
     curl_slist_free_all(headers);
     curl_easy_cleanup(curl);
-    curl_global_cleanup();
     
     return response;
 }
@@ -138,13 +145,11 @@ std::string DashboardAPI::callAgentChange(const int& real_size, const int& honey
     CURLcode res;
     std::string response;
     
-    // Initialize cURL
-    curl_global_init(CURL_GLOBAL_DEFAULT);
+    // Initialize cURL handle (curl_global_init already called in constructor)
     curl = curl_easy_init();
     
     if(!curl) {
         if(err) *err = -1;
-        curl_global_cleanup();
         return "";
     }
     
@@ -203,7 +208,6 @@ std::string DashboardAPI::callAgentChange(const int& real_size, const int& honey
     // Cleanup
     curl_slist_free_all(headers);
     curl_easy_cleanup(curl);
-    curl_global_cleanup();
     
     return response;
 }
@@ -218,13 +222,11 @@ std::string DashboardAPI::callRequestRegistered(const std::string& client_ip,
     CURLcode res;
     std::string response;
     
-    // Initialize cURL
-    curl_global_init(CURL_GLOBAL_DEFAULT);
+    // Initialize cURL handle (curl_global_init already called in constructor)
     curl = curl_easy_init();
     
     if(!curl) {
         if(err) *err = -1;
-        curl_global_cleanup();
         return "";
     }
     
@@ -285,7 +287,6 @@ std::string DashboardAPI::callRequestRegistered(const std::string& client_ip,
     // Cleanup
     curl_slist_free_all(headers);
     curl_easy_cleanup(curl);
-    curl_global_cleanup();
     
     return response;
 }
@@ -327,6 +328,25 @@ std::string DashboardAPI::callGetClients(std::string& token){
         // Log the error
         return ret_500("Database error");
     }
+}
+
+std::string DashboardAPI::callGetAgentStat(std::string& token){
+     int e {0};
+    if(!std::all_of(token.begin(),token.end(),::isalnum)){
+        e=1;
+        return ret_401(e);
+    }
+    std::optional<Userland::User> tu = Userland::User::load_web_token(token,&e);
+    if(!tu){
+        return ret_401(e);
+    }
+    
+    Userland::User& u = tu.value();  // Use reference to avoid copy
+    
+    if(!u.hasPermission(Userland::User::Permissions::VIEW_AGENTS_STATS)) {
+        return ret_403("You have no permission to view agent stats");
+    }
+    ret_200();
 }
 
 

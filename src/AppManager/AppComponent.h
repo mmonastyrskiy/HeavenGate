@@ -74,8 +74,8 @@ inline AppComponent::AppComponent(AppComponentType comp_type)
                 LOG_FATAL("THE DASHBOARD IS NOT RUNNING IN LOCAL MODE");
                 break;
             }
-            path /= "go-apps/";
-            path /= "dashboard";
+            // Python dashboard path - use run_dashboard.py wrapper for better path resolution
+            path = "../Dashboard/run_dashboard.py";
             name = "dashboard";
             this->type = comp_type;
             break;
@@ -191,7 +191,10 @@ bool findPythonPath(std::string& path) {
 
 inline bool AppComponent::run() {
     std::string py;
-    findPythonPath(py);
+    if (!findPythonPath(py)) {
+        LOG_ERROR("Python not found. Cannot start " + name);
+        return false;
+    }
 #if ISLINUX
     if (is_running.load()) {
         LOG_WARN("Service " + name + " is already running");
@@ -201,17 +204,48 @@ inline bool AppComponent::run() {
     pid_t child_pid = fork();
     if (child_pid == 0) {
         // Дочерний процесс
-        std::string full_path = py + path;
+        // Get absolute path to dashboard script
+        std::filesystem::path script_path = path;
+        if (!script_path.is_absolute()) {
+            // Try multiple locations:
+            // 1. Relative to current working directory
+            std::filesystem::path cwd_path = std::filesystem::current_path() / script_path;
+            if (std::filesystem::exists(cwd_path)) {
+                script_path = cwd_path;
+            } else {
+                // 2. Relative to executable location (assuming we're in build/bin)
+                std::filesystem::path exe_path = std::filesystem::path("../../Dashboard/run_dashboard.py");
+                if (std::filesystem::exists(exe_path)) {
+                    script_path = std::filesystem::absolute(exe_path);
+                } else {
+                    // 3. Try from project root
+                    std::filesystem::path root_path = std::filesystem::path("../Dashboard/run_dashboard.py");
+                    if (std::filesystem::exists(root_path)) {
+                        script_path = std::filesystem::absolute(root_path);
+                    } else {
+                        // Last resort: use original path and hope it works
+                        script_path = std::filesystem::absolute(script_path);
+                    }
+                }
+            }
+        }
         
-        // Подготовка аргументов для execv
-        // argv[0] - имя программы, argv[1] - аргумент (пустая строка), argv[2] - NULL
+        std::string script_str = script_path.string();
+        
+        // Change to Dashboard directory for proper static file serving
+        std::filesystem::path dashboard_dir = script_path.parent_path();
+        if (std::filesystem::exists(dashboard_dir)) {
+            std::filesystem::current_path(dashboard_dir);
+        }
+        
+        // Подготовка аргументов для execv: python3 script_path
         char* argv[] = {
-            const_cast<char*>(full_path.c_str()),
-            const_cast<char*>(""),
+            const_cast<char*>(py.c_str()),
+            const_cast<char*>(script_str.c_str()),
             NULL
         };
         
-        execv(full_path.c_str(), argv);
+        execv(py.c_str(), argv);
         
         // Если execv вернул управление - ошибка
         LOG_ERROR("Failed to run " + name + ": " + std::string(strerror(errno)));

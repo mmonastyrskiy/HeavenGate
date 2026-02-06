@@ -39,10 +39,12 @@ public:
 
 
     std::string callGetClients(std::string& token);
+    std::string callGetAgentStat(std::string& token);
+
     
 
-    DashboardAPI() = default;
-    ~DashboardAPI() = default;
+    DashboardAPI();
+    ~DashboardAPI();
 
   std::string baseUrl = std::string("http://") + HOST + ":" + std::to_string(PORT) + "/api";
 
