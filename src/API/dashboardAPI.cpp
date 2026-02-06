@@ -346,7 +346,11 @@ std::string DashboardAPI::callGetAgentStat(std::string& token){
     if(!u.hasPermission(Userland::User::Permissions::VIEW_AGENTS_STATS)) {
         return ret_403("You have no permission to view agent stats");
     }
-    ret_200();
+    
+    // TODO: Implement actual agent statistics retrieval
+    // For now, return empty stats object
+    // Future: Query LoadBalancer stats or database for agent information
+    return ret_200("{}");
 }
 
 

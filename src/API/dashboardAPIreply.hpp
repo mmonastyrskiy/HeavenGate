@@ -33,7 +33,14 @@ inline static std::string escapeJsonString(const std::string& str) {
 }
 
 inline static std::string ret_401(const int& e ){
-    std::string escapedData = escapeJsonString(emap[e]);
+    // Safe access to error map with default fallback
+    std::string errorMsg = "Unknown error";
+    auto it = emap.find(e);
+    if (it != emap.end()) {
+        errorMsg = it->second;
+    }
+    
+    std::string escapedData = escapeJsonString(errorMsg);
     std::string reply = "{"
                           "\"code\":\"401\","
                           "\"success\":\"false\","
