@@ -185,3 +185,45 @@ So: **Crow serves REST for the dashboard UI**; **DashboardAPI** talks to Postgre
 | DashboardAPI | Dashboard (Go) | HTTP POST agents / user_registered / req_registered |
 
 This is the **current usage and how all components integrate** as of the reviewed codebase.
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant LoadBalancer
+    participant DataBus
+    participant DashboardAPI
+    participant DashboardGo as Dashboard (Go)
+    participant PostgreSQL
+    participant Elasticsearch
+    participant ReqClassifier
+
+    Client->>LoadBalancer: TCP connect (port 80)
+    LoadBalancer->>PostgreSQL: INSERT clients (GeoIP)
+    LoadBalancer->>DataBus: publish NEW_CLIENT_CONNECTION
+
+    alt Режим ALLGOOD
+        LoadBalancer->>LoadBalancer: select_backend(false) -> real
+        LoadBalancer->>DashboardAPI: callRequestRegistered()
+        DashboardAPI->>DashboardGo: POST /api/req_registered
+        LoadBalancer->>Client: прокси на реальный бэкенд
+    else Режим классификации
+        Client->>LoadBalancer: HTTP request
+        LoadBalancer->>ReqClassifier: ProcessReq()
+        ReqClassifier->>Elasticsearch: index request
+        LoadBalancer->>DataBus: publish REQUEST_FOR_CLASSIFICATION
+        Note over DataBus: нет подписчика -> событие не обрабатывается
+        Note over LoadBalancer: классификация не завершается, соединение не возобновляется
+    end
+
+    loop Периодическое обновление статистики
+        LoadBalancer->>DashboardAPI: callAgentChange()
+        DashboardAPI->>DashboardGo: POST /api/agents
+        LoadBalancer->>DashboardAPI: callClientChange()
+        DashboardAPI->>DashboardGo: POST /api/user_registered
+    end
+
+    DashboardGo-->>DashboardAPI: (ответы)
+    DashboardAPI-->>LoadBalancer: (ответы)
+
+    Note over DataBus: DataBus.start() не вызывается, события не диспетчеризуются
+```
