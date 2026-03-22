@@ -188,42 +188,39 @@ This is the **current usage and how all components integrate** as of the reviewe
 
 ```mermaid
 sequenceDiagram
-    participant Client
-    participant LoadBalancer
-    participant DataBus
-    participant DashboardAPI
-    participant DashboardGo as Dashboard (Go)
+    participant Клиент
+    participant Балансировщик
+    participant Шина данных
+    participant Программный интерфейс панели управления
+    participant Панель управления as Панель управления (Go)
     participant PostgreSQL
     participant Elasticsearch
-    participant ReqClassifier
+    participant Микросервис-классификатор
 
-    Client->>LoadBalancer: TCP connect (port 80)
-    LoadBalancer->>PostgreSQL: INSERT clients (GeoIP)
-    LoadBalancer->>DataBus: publish NEW_CLIENT_CONNECTION
+    Клиент->>Балансировщик: TCP соединение (порт 80)
+    Балансировщик->>PostgreSQL: INSERT clients (GeoIP)
+    Балансировщик->>Шина данных: Событие NEW_client_CONNECTION
 
-    alt Режим ALLGOOD
-        LoadBalancer->>LoadBalancer: select_backend(false) -> real
-        LoadBalancer->>DashboardAPI: callRequestRegistered()
-        DashboardAPI->>DashboardGo: POST /api/req_registered
-        LoadBalancer->>Client: прокси на реальный бэкенд
+    alt Режим ALLGOOD (Только для тестов)
+        Балансировщик->>Балансировщик: select_backend(false) -> real
+        Балансировщик->>Программный интерфейс панели управления: callRequestRegistered()
+        Программный интерфейс панели управления->>Панель управления: POST /api/req_registered
+        Балансировщик->>Клиент: прокси на реальный бэкенд
     else Режим классификации
-        Client->>LoadBalancer: HTTP request
-        LoadBalancer->>ReqClassifier: ProcessReq()
-        ReqClassifier->>Elasticsearch: index request
-        LoadBalancer->>DataBus: publish REQUEST_FOR_CLASSIFICATION
-        Note over DataBus: нет подписчика -> событие не обрабатывается
-        Note over LoadBalancer: классификация не завершается, соединение не возобновляется
+        Клиент->>Балансировщик: HTTP запрос
+        Балансировщик->>Микросервис-классификатор: ProcessReq()
+        Микросервис-классификатор->>Elasticsearch: index request
+        Балансировщик->>Шина данных: Событие REQUEST_FOR_CLASSIFICATION
     end
 
     loop Периодическое обновление статистики
-        LoadBalancer->>DashboardAPI: callAgentChange()
-        DashboardAPI->>DashboardGo: POST /api/agents
-        LoadBalancer->>DashboardAPI: callClientChange()
-        DashboardAPI->>DashboardGo: POST /api/user_registered
+        Балансировщик->>Программный интерфейс панели управления: callAgentChange()
+        Программный интерфейс панели управления->>Панель управления: POST /api/agents
+        Балансировщик->>Программный интерфейс панели управления: callКлиентChange()
+        Программный интерфейс панели управления->>Панель управления: POST /api/user_registered
     end
 
-    DashboardGo-->>DashboardAPI: (ответы)
-    DashboardAPI-->>LoadBalancer: (ответы)
+    Панель управления-->>Программный интерфейс панели управления: (ответы)
+    Программный интерфейс панели управления-->>Балансировщик: (ответы)
 
-    Note over DataBus: DataBus.start() не вызывается, события не диспетчеризуются
 ```
